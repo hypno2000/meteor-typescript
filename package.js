@@ -11,7 +11,7 @@ var fs = require('fs');
 var execSync = require('exec-sync');
 
 Package.register_extension("ts", function (bundle, source_path, serve_path, where) {
-    var compileOut = source_path + '.compiled_typescript_js', // using `.js` as an extension would cause Meteor to load this file
+    var compileOut = source_path + '.compiled_typescript.js', // using `.js` as an extension would cause Meteor to load this file
         compileCommand = 'tsc --out ' + compileOut + " " + source_path, // add client,server module type switch? 
         bundlePath = serve_path + '.js',
         result = null;
