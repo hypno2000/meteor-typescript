@@ -6,7 +6,7 @@ Package.describe({
 Npm.depends({"exec-sync": "0.1.5"});
 
 Package.register_extension("ts", function (bundle, source_path, serve_path, where) {
-    var fs = Npm.require('fs');
+	var fs = Npm.require('fs');
 	var path = Npm.require('path');
 	var execSync = Npm.require('exec-sync');
 
