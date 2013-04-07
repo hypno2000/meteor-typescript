@@ -12,24 +12,25 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 	var fs = Npm.require('fs');
 	var path = Npm.require('path');
 	var mkdirp = Npm.require('mkdirp');
-	var execSync = Npm.require('exec-sync');
-
-	var ERROR = "\nTypeScript compilation failed!\n";
-	ERROR = ERROR + (new Array(ERROR.length - 1).join("-")) + "\n";
-	// XXX Use other npm packages. Seen in the handlebars package ;)
-
-	var compileOut = source_path + '.compiled_typescript_js', // using `.js` as an extension would cause Meteor to load this file
-		compileCommand = 'tsc --nolib --sourcemap --out ' + compileOut + " " + source_path, // add client,server module type switch?
-		result = null;
 
 	// cache check
 	var cachePath = '.meteor/cache' + serve_path;
 	var cacheDir = path.dirname(cachePath);
+	var baseName = path.basename(source_path, '.ts');
 	var changeTime = fs.statSync(source_path).mtime;
 	if (!fs.existsSync(cacheDir)) {
 		mkdirp.sync(cacheDir);
 	}
 	if (!fs.existsSync(cachePath) || changeTime.getTime() > fs.statSync(cachePath).mtime.getTime()) {
+
+		var execSync = Npm.require('exec-sync');
+
+		var ERROR = "\nTypeScript compilation failed!\n";
+		ERROR = ERROR + (new Array(ERROR.length - 1).join("-")) + "\n";
+		// XXX Use other npm packages. Seen in the handlebars package ;)
+
+		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + source_path; // add client,server module type switch?
+		var result = null;
 
 		// Compile the TypeScript file with the TypeScript command line compiler.
 		// Until the TypeScript module provides a public API there is no reliable way around it without changing the
@@ -45,8 +46,8 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 				result = true;
 		}
 
-		var jsPath = compileOut + '/' + path.basename(source_path, '.ts') + '.js';
-		var mapPath = compileOut + '/' + path.basename(source_path, '.ts') + '.js.map';
+		var jsPath = cacheDir + '/' + baseName + '.js';
+		var mapPath = cacheDir + '/' + baseName + '.js.map';
 
 		if (fs.existsSync(jsPath)) {
 			if (result !== null) {
@@ -60,35 +61,18 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 				);
 				var mapBuffer = new Buffer(
 					fs.readFileSync(mapPath).toString().replace(
-						'"sources":["../' + path.basename(serve_path),
-						'"sources":["' + path.dirname(serve_path) + '/' + path.basename(serve_path)  + '?' + changeTime.getTime()
+						/"sources":\["[0-9a-zA-Z-\/\.-]+"]/,
+						'"sources":["' + path.dirname(serve_path) + '/' + path.basename(serve_path)  + '?' + changeTime.getTime() + '"]'
 					)
 				);
 				fs.writeFileSync(cachePath, sourceBuffer);
 				fs.writeFileSync(cachePath + '.js', compiledBuffer);
 				fs.writeFileSync(cachePath + '.map', mapBuffer);
-
 			}
 
 			// Delete the created file afterwards and add the content to the bundle
-			var rmDir = function (dirPath) {
-				try {
-					var files = fs.readdirSync(dirPath);
-				}
-				catch (e) {
-					return;
-				}
-				if (files.length > 0)
-					for (var i = 0; i < files.length; i++) {
-						var filePath = dirPath + '/' + files[i];
-						if (fs.statSync(filePath).isFile())
-							fs.unlinkSync(filePath);
-						else
-							rmDir(filePath);
-					}
-				fs.rmdirSync(dirPath);
-			};
-			rmDir(compileOut);
+			fs.unlinkSync(jsPath);
+			fs.unlinkSync(mapPath);
 		}
 		else {
 			bundle.error(ERROR);
