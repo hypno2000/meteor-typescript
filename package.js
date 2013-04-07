@@ -37,9 +37,12 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 		try {
 			result = execSync(compileCommand);
 		} catch (e) {
-			result = true;
-			console.log(e);
-			// bundle.error(ERROR + e);
+			if (e.message.substr(-30) !== 'not exist in the current scope') {
+				bundle.error(ERROR + e);
+				return;
+			}
+			else
+				result = true;
 		}
 
 		var jsPath = compileOut + '/' + path.basename(source_path, '.ts') + '.js';
