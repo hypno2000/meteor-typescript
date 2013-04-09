@@ -38,8 +38,20 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 		try {
 			result = execSync(compileCommand);
 		} catch (e) {
-			if (e.message.substr(-30) !== 'not exist in the current scope') {
-				bundle.error(ERROR + e);
+			var lines = e.message.split('\n');
+			var errors = [];
+			for (var i = 0; i < lines.length ; i++) {
+				if (
+					// !/The property '__super__' does not exist on value of type/.test(lines[i]) &&
+					lines[i].substr(-36) !== 'Base type must be interface or class' &&
+					lines[i].substr(-30) !== 'not exist in the current scope' &&
+					lines[i].substr(-24) !== 'lacks an implementation.'
+				) {
+					errors.push(lines[i]);
+				}
+			}
+			if (errors.length > 0) {
+				bundle.error(ERROR + errors.join('\n'));
 				return;
 			}
 			else
