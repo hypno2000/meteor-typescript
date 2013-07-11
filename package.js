@@ -29,7 +29,8 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 		ERROR = ERROR + (new Array(ERROR.length - 1).join("-")) + "\n";
 		// XXX Use other npm packages. Seen in the handlebars package ;)
 
-		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + source_path; // add client,server module type switch?
+		var compileCommand = 'tsc --sourcemap --out ' + cacheDir + " " + source_path; // add client,server module type switch?
+//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + source_path; // add client,server module type switch?
 		var result = null;
 
 		// Compile the TypeScript file with the TypeScript command line compiler.
@@ -38,15 +39,16 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 		try {
 			result = execSync(compileCommand);
 		} catch (e) {
+
 			var lines = e.message.split('\n');
 			var errors = [];
-			for (var i = 0; i < lines.length ; i++) {
+			for (var i = 0; i < lines.length; i++) {
 				if (
 					// !/The property '__super__' does not exist on value of type/.test(lines[i]) &&
 					lines[i].substr(-36) !== 'Base type must be interface or class' &&
-					lines[i].substr(-30) !== 'not exist in the current scope' &&
-					lines[i].substr(-24) !== 'lacks an implementation.'
-				) {
+						lines[i].substr(-30) !== 'not exist in the current scope' &&
+						lines[i].substr(-24) !== 'lacks an implementation.'
+					) {
 					errors.push(lines[i]);
 				}
 			}
@@ -63,10 +65,10 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 
 		if (fs.existsSync(jsPath)) {
 			if (result !== null) {
+
 				var sourceBuffer = new Buffer(fs.readFileSync(source_path));
-				var test;
 				var compiledBuffer = new Buffer(
-					test = fs.readFileSync(jsPath).toString().replace(
+					fs.readFileSync(jsPath).toString().replace(
 						/\/\/@ sourceMappingURL=[0-9a-zA-Z_.-]+/,
 						'//@ sourceMappingURL=' + serve_path + '.map?' + changeTime.getTime()
 					)
@@ -74,9 +76,10 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 				var mapBuffer = new Buffer(
 					fs.readFileSync(mapPath).toString().replace(
 						/"sources":\["[0-9a-zA-Z-\/\.-]+"]/,
-						'"sources":["' + path.dirname(serve_path) + '/' + path.basename(serve_path)  + '?' + changeTime.getTime() + '"]'
+						'"sources":["' + path.dirname(serve_path) + '/' + path.basename(serve_path) + '?' + changeTime.getTime() + '"]'
 					)
 				);
+				console.log(compiledBuffer.toString());
 				fs.writeFileSync(cachePath, sourceBuffer);
 				fs.writeFileSync(cachePath + '.js', compiledBuffer);
 				fs.writeFileSync(cachePath + '.map', mapBuffer);
