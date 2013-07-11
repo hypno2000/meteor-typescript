@@ -45,10 +45,11 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 			for (var i = 0; i < lines.length; i++) {
 				if (
 					// !/The property '__super__' does not exist on value of type/.test(lines[i]) &&
-					lines[i].substr(-36) !== 'Base type must be interface or class' &&
-						lines[i].substr(-30) !== 'not exist in the current scope' &&
-						lines[i].substr(-24) !== 'lacks an implementation.'
-					) {
+//					lines[i].substr(-36) !== 'Base type must be interface or class' &&
+//					lines[i].substr(-30) !== 'not exist in the current scope' &&
+//					lines[i].substr(-24) !== 'lacks an implementation.'
+					lines[i].indexOf('error TS2095') == -1
+				) {
 					errors.push(lines[i]);
 				}
 			}
@@ -79,7 +80,6 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 						'"sources":["' + path.dirname(serve_path) + '/' + path.basename(serve_path) + '?' + changeTime.getTime() + '"]'
 					)
 				);
-				console.log(compiledBuffer.toString());
 				fs.writeFileSync(cachePath, sourceBuffer);
 				fs.writeFileSync(cachePath + '.js', compiledBuffer);
 				fs.writeFileSync(cachePath + '.map', mapBuffer);
