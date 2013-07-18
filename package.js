@@ -80,7 +80,7 @@ Package.register_extension("ts", function (bundle, source_path, serve_path, wher
 		ERROR = ERROR + (new Array(ERROR.length - 1).join("-")) + "\n";
 		// XXX Use other npm packages. Seen in the handlebars package ;)
 
-		var compileCommand = 'tsc --sourcemap --out ' + cacheDir + ' ' + source_path; // add client,server module type switch?
+		var compileCommand = 'tsc --target ES5 --sourcemap --out ' + cacheDir + ' ' + source_path; // add client,server module type switch?
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + source_path; // add client,server module type switch?
 		var result = null;
 
