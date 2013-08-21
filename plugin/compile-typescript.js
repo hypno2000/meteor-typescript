@@ -7,6 +7,7 @@ var packageDirs = {};
 var appRefs = [];
 var appDirs = [];
 
+
 // compiled js and sourcemaps will be cached here
 if (!fs.existsSync('.meteor/cache')) {
 	mkdirp.sync('.meteor/cache');
@@ -66,6 +67,7 @@ var handler = function (compileStep) {
 		jsPath = cacheDir + '/' + path.dirname(path.relative(rootPath, fullPath)) + '/' + baseName + '.js';
 	}
 	var mapPath = jsPath + '.map';
+	var error;
 
 	// references
 	var dir = path.dirname(fullPath);
@@ -163,7 +165,7 @@ var handler = function (compileStep) {
 				//}
 			}
 			if (errors.length > 0) {
-				throw new Error(ERROR + errors.join('\n'));
+				error = ERROR + errors.join('\n');
 			}
 			else
 				result = true;
@@ -199,20 +201,33 @@ var handler = function (compileStep) {
 			fs.unlinkSync(mapPath);
 		}
 		else {
-			throw new Error(ERROR + 'file was not created: \n' + compileStep.inputPath + '\n' + jsPath + '\n' + inputPath + '\n' + cacheDir + '\n' + fullPath);
+			if (error) {
+				throw new Error(error);
+			}
+			else {
+				throw new Error(ERROR + 'file was not created: \n' + compileStep.inputPath + '\n' + jsPath + '\n' + inputPath + '\n' + cacheDir + '\n' + fullPath);
+			}
 		}
 
 	}
 	var data = fs.readFileSync(cachePath + '.js').toString();
+
+	// couple of hacks for meteor namespaceing
 	data = data
 		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
-		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+" \/>\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;');
+		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
+		.replace(/^\s*var ([a-zA-Z0-9_]+);/, 'this.$1 = this.$1 || {};\nvar $1 = this.$1;');
+
 	compileStep.addJavaScript({
 	  path: compileStep.inputPath + ".js",
 	  sourcePath: compileStep.inputPath,
 	  data: data
 //	  sourceMap: fs.readFileSync(cachePath + '.map').toString()
 	});
+
+	if (error) {
+		throw new Error(error);
+	}
 };
 
 Plugin.registerSourceHandler("ts", handler);
