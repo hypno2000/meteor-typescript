@@ -122,10 +122,11 @@ var handler = function (compileStep) {
 		return;
 	}
 
-	if (!fs.existsSync(cachePath)) {
+	if (!fs.existsSync(cacheDir)) {
 		mkdirp.sync(cacheDir);
 	}
 
+//	console.log('TS cache exists: ' + cachePath + ' ' + fs.existsSync(cachePath));
 	if (!fs.existsSync(cachePath) || changeTime.getTime() > fs.statSync(cachePath).mtime.getTime()) {
 
 		var execSync = Npm.require('exec-sync');
@@ -146,8 +147,8 @@ var handler = function (compileStep) {
 
 		try {
 			result = execSync(compileCommand);
-			//console.log(compileCommand);
-			//console.log(result);
+//			console.log(compileCommand);
+//			console.log(result);
 		} catch (e) {
 
 			var lines = e.message.split('\n');
@@ -170,35 +171,38 @@ var handler = function (compileStep) {
 			else
 				result = true;
 		}
-
+//		console.log(cacheDir + ' ' + error + ' ' + result);
 		if (fs.existsSync(cacheDir + '/' + baseName + '.js')) {
 			jsPath = cacheDir + '/' + baseName + '.js';
 			mapPath = jsPath + '.map';
 		}
 		if (fs.existsSync(jsPath)) {
-			if (result !== null) {
+//			console.log(jsPath)
 
-				var sourceBuffer = new Buffer(fs.readFileSync(fullPath));
-				var compiledBuffer = new Buffer(
-					fs.readFileSync(jsPath).toString().replace(
-						/\/\/@ sourceMappingURL=[0-9a-zA-Z_.-]+/,
-						'//@ sourceMappingURL=' + inputPath + '.map?' + changeTime.getTime()
-					)
-				);
-				var mapBuffer = new Buffer(
-					fs.readFileSync(mapPath).toString().replace(
-						/"sources":\["[0-9a-zA-Z-\/\.-]+"]/,
-						'"sources":["' + path.dirname(inputPath) + '/' + path.basename(inputPath) + '?' + changeTime.getTime() + '"]'
-					)
-				);
-				fs.writeFileSync(cachePath, sourceBuffer);
-				fs.writeFileSync(cachePath + '.js', compiledBuffer);
-				fs.writeFileSync(cachePath + '.map', mapBuffer);
-			}
+			var sourceBuffer = new Buffer(fs.readFileSync(fullPath));
+			var compiledBuffer = new Buffer(
+				fs.readFileSync(jsPath).toString().replace(
+					/\/\/@ sourceMappingURL=[0-9a-zA-Z_.-]+/,
+					'//@ sourceMappingURL=' + inputPath + '.map?' + changeTime.getTime()
+				)
+			);
+			var mapBuffer = new Buffer(
+				fs.readFileSync(mapPath).toString().replace(
+					/"sources":\["[0-9a-zA-Z-\/\.-]+"]/,
+					'"sources":["' + path.dirname(inputPath) + '/' + path.basename(inputPath) + '?' + changeTime.getTime() + '"]'
+				)
+			);
+//			console.log('1: ' + jsPath);
+			fs.writeFileSync(cachePath, sourceBuffer);
+			fs.writeFileSync(cachePath + '.js', compiledBuffer);
+			fs.writeFileSync(cachePath + '.map', mapBuffer);
 
-			// Delete the created file afterwards and add the content to the bundle
 			fs.unlinkSync(jsPath);
 			fs.unlinkSync(mapPath);
+
+			if (error) {
+				console.log(error);
+			}
 		}
 		else {
 			if (error) {
