@@ -175,7 +175,7 @@ function getTypescriptPackages() {
 var typescriptPackages;
 var lastGenerateTime;
 function generatePackageRefs() {
-	
+
 	// generate max once per second
 	var currentTime = new Date().getTime() / 1000;
 	if (lastGenerateTime && currentTime - lastGenerateTime < 1) {
