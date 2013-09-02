@@ -12,14 +12,6 @@ if (!fs.existsSync('.meteor/cache')) {
 	mkdirp.sync('.meteor/cache');
 }
 
-function getPackageRefs(dir, packageName) {
-	var res = "";
-	for (var entry in packages[packageName]) {
-		res += '///<reference path="' + path.relative(dir, entry) + '" />\n';
-	};
-	return res;
-}
-
 function getAppRefs(side) {
 	var res = '';
 	var packages = fs.readFileSync('.meteor/packages').toString().split('\n');
@@ -160,6 +152,16 @@ function getTypescriptPackages() {
 					delete package.client.uses[j];
 				}
 			}
+			for (var j in package.server.imply) {
+				if (!package.server.imply[j].server.imply.typescript && j !== 'typescript') {
+					delete package.server.imply[j];
+				}
+			}
+			for (var j in package.client.imply) {
+				if (!package.client.imply[j].client.imply.typescript && j !== 'typescript') {
+					delete package.client.imply[j];
+				}
+			}
 		}
 	}
 	delete packages.typescript;
@@ -167,6 +169,8 @@ function getTypescriptPackages() {
 		var package = packages[i];
 		delete package.server.uses.typescript;
 		delete package.client.uses.typescript;
+		delete package.server.imply.typescript;
+		delete package.client.imply.typescript;
 	}
 
 	return packages;
@@ -189,22 +193,28 @@ function generatePackageRefs() {
 		for (var side in packages[i]) {
 			var package = packages[i][side];
 			var packagePath = path.join(packagesPath, i);
+			var filesPath = path.join(packagePath, '.package-' + side + '.d.ts');
+			var usesPath = path.join(packagePath, '.deps-' + side + '.d.ts');
 
-			// files
-			var refs = "";
-			for (var j in package.files) {
-				var file = package.files[j];
-				refs += '///<reference path="' + file + '" />\n';
+			// implies
+			var refs = '';
+			for (j in package.imply) {
+				refs += '///<reference path="' + path.join('..', j, '.package-' + side + '.d.ts') + '" />\n'
 			}
-			fs.writeFileSync(path.join(packagePath, '.package-' + side + '.d.ts'), refs);
+
+			// own files
+			for (var j in package.files) {
+				refs += '///<reference path="' + package.files[j] + '" />\n';
+			}
+			fs.writeFileSync(filesPath, refs);
 
 			// uses
-			refs = "";
+			refs = '';
 			for (j in package.uses) {
-				var dep = package.files[j];
-				refs += '///<reference path="' +path.join('../', j, '.package-' + side + '.d.ts') + '" />\n';
+				refs += '///<reference path="' + path.join('..', j, '.package-' + side + '.d.ts') + '" />\n';
 			}
-			fs.writeFileSync(path.join(packagePath, '.deps-' + side + '.d.ts'), refs);
+			fs.writeFileSync(usesPath, refs);
+
 		}
 	}
 }
@@ -228,10 +238,10 @@ var handler = function (compileStep) {
 	var changeTime = fs.statSync(fullPath).mtime;
 	var jsPath;
 	if (inputPath.substring(0, 10) === '/packages/') {
-		jsPath = cacheDir + '/' + path.dirname(inputPath.substring(10)) + '/' + baseName + '.js';
+		jsPath = path.join(cacheDir, path.dirname(inputPath.substring(10)), baseName + '.js');
 	} else {
-		var rootPath = path.normalize(fullPath.substring(0, fullPath.length - inputPath.length) + '/..');
-		jsPath = cacheDir + '/' + path.dirname(path.relative(rootPath, fullPath)) + '/' + baseName + '.js';
+		var rootPath = path.normalize(path.join(fullPath.substring(0, fullPath.length - inputPath.length), '/..'));
+		jsPath = path.join(cacheDir, path.dirname(path.relative(rootPath, fullPath)), baseName + '.js');
 	}
 	var mapPath = jsPath + '.map';
 	var error;
