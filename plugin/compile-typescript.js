@@ -193,6 +193,19 @@ var handler = function (compileStep) {
 				)
 			);
 //			console.log('1: ' + jsPath);
+			if (error) {
+				try {
+					fs.unlinkSync(cachePath, sourceBuffer);
+					fs.unlinkSync(cachePath + '.js', compiledBuffer);
+					fs.unlinkSync(cachePath + '.map', mapBuffer);
+					fs.unlinkSync(jsPath);
+					fs.unlinkSync(mapPath);
+				}
+				catch (e) {
+					// ignore
+				}
+				throw new Error(error);
+			}
 			fs.writeFileSync(cachePath, sourceBuffer);
 			fs.writeFileSync(cachePath + '.js', compiledBuffer);
 			fs.writeFileSync(cachePath + '.map', mapBuffer);
@@ -200,11 +213,16 @@ var handler = function (compileStep) {
 			fs.unlinkSync(jsPath);
 			fs.unlinkSync(mapPath);
 
-			if (error) {
-				console.log(error);
-			}
 		}
 		else {
+			try {
+				fs.unlinkSync(cachePath, sourceBuffer);
+				fs.unlinkSync(cachePath + '.js', compiledBuffer);
+				fs.unlinkSync(cachePath + '.map', mapBuffer);
+			}
+			catch (e) {
+				// ignore
+			}
 			if (error) {
 				throw new Error(error);
 			}
@@ -222,7 +240,7 @@ var handler = function (compileStep) {
 		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
 		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
 		.replace(/^\s*var ([a-zA-Z0-9_]+);/, prep)
-		.replace(/\}\)\(([a-zA-Z0-9_]+) \|\| \(([a-zA-Z0-9_]+) = \{\}\)\);(\n\/\/# sourceMappingURL)/, '})($1 || ($1 = {}));$3');
+		.replace(/\}\)\(([a-zA-Z0-9_]+) \|\| \(([a-zA-Z0-9_]+) = \{\}\)\);(\n\/\/# sourceMappingURL)/, '})($1);$3');
 //	data = data
 //		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
 //		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
