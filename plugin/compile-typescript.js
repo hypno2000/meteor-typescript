@@ -2,8 +2,6 @@ var fs = Npm.require('fs');
 var path = Npm.require('path');
 var mkdirp = Npm.require('mkdirp');
 
-var packageRefs = {};
-var packageDirs = {};
 var appRefs = [];
 var appDirs = [];
 
@@ -19,7 +17,8 @@ function getAppRefs(side) {
 		if (!entry || entry.charAt(0) === '#' || !typescriptPackages[entry]) {
 			return;
 		}
-		res += '///<reference path="' + path.relative('.meteor', path.join('../meteor/packages', entry, '.package-' + side + '.d.ts')) + '" />\n';
+		res += '///<reference path="' + path.relative('.meteor', path.join('../meteor/packages', entry, '.implies-' + side + '.d.ts')) + '" />\n';
+		res += '///<reference path="' + path.relative('.meteor', path.join('../meteor/packages', entry, '.files-' + side + '.d.ts')) + '" />\n';
 	});
 	appRefs.forEach(function (entry) {
 		if (
@@ -32,6 +31,7 @@ function getAppRefs(side) {
 	return res;
 }
 
+// gets all packages with their files, uses and implies
 function getPackages() {
 	var packages = {};
 	var Package = {
@@ -134,31 +134,36 @@ function getPackages() {
 	}
 }
 
+// filters out only typescript packages
 function getTypescriptPackages() {
 	var packages = getPackages();
 	for (var i in packages) {
 		var package = packages[i];
-		if (!package.server.uses.typescript && !package.client.uses.typescript && i !== 'typescript') {
+		if (!usesTypescript(package) && i !== 'typescript') {
 			delete packages[i];
 		}
 		else {
 			for (var j in package.server.uses) {
-				if (!package.server.uses[j].server.uses.typescript && j !== 'typescript') {
+				var item = package.server.uses[j];
+				if (!usesTypescript(item) && j !== 'typescript') {
 					delete package.server.uses[j];
 				}
 			}
 			for (var j in package.client.uses) {
-				if (!package.client.uses[j].client.uses.typescript && j !== 'typescript') {
+				var item = package.client.uses[j];
+				if (!usesTypescript(item) && j !== 'typescript') {
 					delete package.client.uses[j];
 				}
 			}
 			for (var j in package.server.imply) {
-				if (!package.server.imply[j].server.imply.typescript && j !== 'typescript') {
+				var item = package.server.imply[j];
+				if (!usesTypescript(item) && j !== 'typescript') {
 					delete package.server.imply[j];
 				}
 			}
 			for (var j in package.client.imply) {
-				if (!package.client.imply[j].client.imply.typescript && j !== 'typescript') {
+				var item = package.client.imply[j];
+				if (!usesTypescript(item) && j !== 'typescript') {
 					delete package.client.imply[j];
 				}
 			}
@@ -174,8 +179,49 @@ function getTypescriptPackages() {
 	}
 
 	return packages;
+
+	function usesTypescript(package) {
+		if (package.server.uses.typescript || package.client.uses.typescript) {
+			return true;
+		}
+		for (var i in package.server.uses) {
+			if (checkImpliesServer(package.server.uses[i])) {
+				return true;
+			}
+		}
+		for (var i in package.client.uses) {
+			if (checkImpliesClient(package.client.uses[i])) {
+				return true;
+			}
+		}
+		return false;
+
+		function checkImpliesServer(package){
+			if (package.server.imply.typescript) {
+				return true;
+			}
+			for (var i in package.server.imply) {
+				if (checkImpliesServer(package.server.imply[i])) {
+					return true;
+				}
+			}
+			return false;
+		}
+		function checkImpliesClient(package){
+			if (package.client.imply.typescript) {
+				return true;
+			}
+			for (var i in package.client.imply) {
+				if (checkImpliesServer(package.client.imply[i])) {
+					return true;
+				}
+			}
+			return false;
+		}
+	}
 }
 
+// generates .d.ts reference files for packages
 var typescriptPackages;
 var lastGenerateTime;
 function generatePackageRefs() {
@@ -193,16 +239,12 @@ function generatePackageRefs() {
 		for (var side in packages[i]) {
 			var package = packages[i][side];
 			var packagePath = path.join(packagesPath, i);
-			var filesPath = path.join(packagePath, '.package-' + side + '.d.ts');
-			var usesPath = path.join(packagePath, '.deps-' + side + '.d.ts');
-
-			// implies
-			var refs = '';
-			for (j in package.imply) {
-				refs += '///<reference path="' + path.join('..', j, '.package-' + side + '.d.ts') + '" />\n'
-			}
+			var filesPath = path.join(packagePath, '.files-' + side + '.d.ts');
+			var usesPath = path.join(packagePath, '.uses-' + side + '.d.ts');
+			var impliesPath = path.join(packagePath, '.implies-' + side + '.d.ts');
 
 			// own files
+			var refs = '';
 			for (var j in package.files) {
 				refs += '///<reference path="' + package.files[j] + '" />\n';
 			}
@@ -211,9 +253,18 @@ function generatePackageRefs() {
 			// uses
 			refs = '';
 			for (j in package.uses) {
-				refs += '///<reference path="' + path.join('..', j, '.package-' + side + '.d.ts') + '" />\n';
+				refs += '///<reference path="' + path.join('..', j, '.implies-' + side + '.d.ts') + '" />\n';
+				refs += '///<reference path="' + path.join('..', j, '.files-' + side + '.d.ts') + '" />\n';
 			}
 			fs.writeFileSync(usesPath, refs);
+
+			// implies
+			refs = '';
+			for (j in package.imply) {
+				refs += '///<reference path="' + path.join('..', j, '.implies-' + side + '.d.ts') + '" />\n'
+				refs += '///<reference path="' + path.join('..', j, '.files-' + side + '.d.ts') + '" />\n'
+			}
+			fs.writeFileSync(impliesPath, refs);
 
 		}
 	}
@@ -251,12 +302,12 @@ var handler = function (compileStep) {
 	if (compileStep.packageName) {
 		var packagePath = path.join('../meteor/packages', compileStep.packageName);
 		fs.writeFileSync(path.join(dir, '.server.d.ts'),
-			'///<reference path="' + path.relative(dir, path.join(packagePath, '.deps-server.d.ts')) + '" />\n' +
-			'///<reference path="' + path.relative(dir, path.join(packagePath, '.package-server.d.ts')) + '" />\n'
+			'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-server.d.ts')) + '" />\n' +
+			'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-server.d.ts')) + '" />\n'
 		);
 		fs.writeFileSync(path.join(dir, '.client.d.ts'),
-			'///<reference path="' + path.relative(dir, path.join(packagePath, '.deps-client.d.ts')) + '" />\n' +
-			'///<reference path="' + path.relative(dir, path.join(packagePath, '.package-client.d.ts')) + '" />\n'
+			'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-client.d.ts')) + '" />\n' +
+			'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-client.d.ts')) + '" />\n'
 		);
 	}
 	else {
@@ -296,14 +347,8 @@ var handler = function (compileStep) {
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
 		var result = null;
 
-		// Compile the TypeScript file with the TypeScript command line compiler.
-		// Until the TypeScript module provides a public API there is no reliable way around it without changing the
-		// TypeScript sources.
-
 		try {
 			result = execSync(compileCommand);
-//			console.log(compileCommand);
-//			console.log(result);
 		} catch (e) {
 
 			var lines = e.message.split('\n');
@@ -326,14 +371,11 @@ var handler = function (compileStep) {
 			else
 				result = true;
 		}
-//		console.log(cacheDir + ' ' + error + ' ' + result);
 		if (fs.existsSync(cacheDir + '/' + baseName + '.js')) {
 			jsPath = cacheDir + '/' + baseName + '.js';
 			mapPath = jsPath + '.map';
 		}
 		if (fs.existsSync(jsPath)) {
-//			console.log(jsPath)
-
 			var sourceBuffer = new Buffer(fs.readFileSync(fullPath));
 			var compiledBuffer = new Buffer(
 				fs.readFileSync(jsPath).toString().replace(
@@ -347,7 +389,6 @@ var handler = function (compileStep) {
 //					'"sources":["' + path.dirname(inputPath) + '/' + path.basename(inputPath) + '?' + changeTime.getTime() + '"]'
 //				)
 //			);
-//			console.log('1: ' + jsPath);
 			if (error) {
 				try {
 					fs.unlinkSync(cachePath);
