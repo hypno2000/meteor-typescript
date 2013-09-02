@@ -7,7 +7,6 @@ var packageDirs = {};
 var appRefs = [];
 var appDirs = [];
 
-
 // compiled js and sourcemaps will be cached here
 if (!fs.existsSync('.meteor/cache')) {
 	mkdirp.sync('.meteor/cache');
@@ -15,37 +14,220 @@ if (!fs.existsSync('.meteor/cache')) {
 
 function getPackageRefs(dir, packageName) {
 	var res = "";
-	packageRefs[packageName].forEach(function (entry) {
+	for (var entry in packages[packageName]) {
 		res += '///<reference path="' + path.relative(dir, entry) + '" />\n';
-	});
+	};
 	return res;
 }
 
-function getAllPackageRefs(src, dir) {
-	var res = "";
-	fs.readdirSync(src).forEach(function (entry) {
-		if (entry.substring(0, 1) === '.') {
+function getAppRefs(side) {
+	var res = '';
+	var packages = fs.readFileSync('.meteor/packages').toString().split('\n');
+	packages.forEach(function (entry) {
+		if (!entry || entry.charAt(0) === '#' || !typescriptPackages[entry]) {
 			return;
 		}
-		var packagePath = path.join(src, entry, '.ref.d.ts');
-		if (!fs.existsSync(packagePath)) {
-			return;
-		}
-		res += '///<reference path="' + path.join(entry, '.package.d.ts') + '" />\n';
+		res += '///<reference path="' + path.relative('.meteor', path.join('../meteor/packages', entry, '.package-' + side + '.d.ts')) + '" />\n';
 	});
-	return res;
-}
-
-function getAppRefs() {
-	var res = '///<reference path=".packages.d.ts" />\n';
 	appRefs.forEach(function (entry) {
-		res += '///<reference path="' + path.relative('.meteor', entry) + '" />\n';
+		if (
+			side === 'client' && entry.substr(0, 'server'.length + 1) !== 'server/' ||
+			side === 'server' && entry.substr(0, 'client'.length + 1) !== 'client/'
+		) {
+			res += '///<reference path="' + path.relative('.meteor', entry) + '" />\n';
+		}
 	});
 	return res;
 }
+
+function getPackages() {
+	var packages = {};
+	var Package = {
+		describe: function(){},
+		_transitional_registerBuildPlugin: function(){},
+		register_extension: function(){},
+		on_use: function(callback){
+			callback(api);
+		},
+		on_test: function(){}
+	};
+	Npm.depends = function(){};
+	var api = {
+		add_files: function(){},
+		imply: function(){},
+		use: function(){},
+		export: function(){}
+	}
+	fs.readdirSync('../meteor/packages').forEach(function(package){
+		if (package.charAt(0) === '.') {
+			return;
+		}
+		if (typeof(packages[package]) === 'undefined') {
+			packages[package] = {
+				server: {
+					uses: {},
+					imply: {},
+					files: []
+				},
+				client: {
+					uses: {},
+					imply: {},
+					files: []
+				}
+			};
+		}
+		var packageJsPath = '../meteor/packages/' + package + '/package.js';
+		if (package.charAt(0) === '.' || !fs.existsSync(packageJsPath)) {
+			return;
+		}
+		var packageJs = fs.readFileSync(packageJsPath).toString();
+		if (packageJs) {
+			api.use = function (name, where) {
+				var inServer = !where || where === 'server' || (where instanceof Array && where.indexOf('server') !== -1);
+				var inClient = !where || where === 'client' || (where instanceof Array && where.indexOf('client') !== -1);
+				if (!(name instanceof Array)) {
+					name = [name];
+				}
+				name.forEach(function(item){
+					if (typeof(packages[item]) === 'undefined') {
+						packages[item] = {
+							server: {
+								uses: {},
+								imply: {},
+								files: []
+							},
+							client: {
+								uses: {},
+								imply: {},
+								files: []
+							}
+						};
+					}
+					if (inServer) {
+						packages[package].server.uses[item] = packages[item];
+					}
+					if (inClient) {
+						packages[package].client.uses[item] = packages[item];
+					}
+				});
+			};
+			api.imply = function (name, where) {
+				var inServer = !where || where === 'server' || (where instanceof Array && where.indexOf('server') !== -1);
+				var inClient = !where || where === 'client' || (where instanceof Array && where.indexOf('client') !== -1);
+				if (!(name instanceof Array)) {
+					name = [name];
+				}
+				name.forEach(function(item){
+					if (typeof(packages[item]) === 'undefined') {
+						packages[item] = {
+							server: {
+								uses: {},
+								imply: {},
+								files: []
+							},
+							client: {
+								uses: {},
+								imply: {},
+								files: []
+							}
+						};
+					}
+					if (inServer) {
+						packages[package].server.imply[item] = packages[item];
+					}
+					if (inClient) {
+						packages[package].client.imply[item] = packages[item];
+					}
+				});
+			};
+			api.add_files = function (name, where) {
+				var inServer = !where || where === 'server' || (where instanceof Array && where.indexOf('server') !== -1);
+				var inClient = !where || where === 'client' || (where instanceof Array && where.indexOf('client') !== -1);
+				if (!(name instanceof Array)) {
+					name = [name];
+				}
+				var items = name.filter(function(item){
+					return item.substr(item.length - 3) === '.ts';
+				});
+				if (inServer) {
+					packages[package].server.files = packages[package].server.files.concat(items);
+				}
+				if (inClient) {
+					packages[package].client.files = packages[package].client.files.concat(items);
+				}
+			};
+			Package.on_use = function(callback){
+				callback(api);
+			}
+			eval(packageJs);
+		}
+	});
+	return packages;
+}
+
+function getTypescriptPackages() {
+	var packages = getPackages();
+	for (var i in packages) {
+		var package = packages[i];
+		if (!package.server.uses.typescript && !package.client.uses.typescript && i !== 'typescript') {
+			delete packages[i];
+		}
+		else {
+			for (var j in package.server.uses) {
+				if (!package.server.uses[j].server.uses.typescript && j !== 'typescript') {
+					delete package.server.uses[j];
+				}
+			}
+			for (var j in package.client.uses) {
+				if (!package.client.uses[j].client.uses.typescript && j !== 'typescript') {
+					delete package.client.uses[j];
+				}
+			}
+		}
+	}
+	delete packages.typescript;
+	for (var i in packages) {
+		var package = packages[i];
+		delete package.server.uses.typescript;
+		delete package.client.uses.typescript;
+	}
+
+	return packages;
+}
+
+var typescriptPackages;
+function generatePackageRefs() {
+	var packages = typescriptPackages = getTypescriptPackages();
+	var packagesPath = '../meteor/packages';
+	for (var i in packages) {
+		for (var side in packages[i]) {
+			var package = packages[i][side];
+			var packagePath = path.join(packagesPath, i);
+
+			// files
+			var refs = "";
+			for (var j in package.files) {
+				var file = package.files[j];
+				refs += '///<reference path="' + file + '" />\n';
+			}
+			fs.writeFileSync(path.join(packagePath, '.package-' + side + '.d.ts'), refs);
+
+			// uses
+			refs = "";
+			for (j in package.uses) {
+				var dep = package.files[j];
+				refs += '///<reference path="' +path.join('../', j, '.package-' + side + '.d.ts') + '" />\n';
+			}
+			fs.writeFileSync(path.join(packagePath, '.deps-' + side + '.d.ts'), refs);
+		}
+	}
+}
+
 
 var handler = function (compileStep) {
 	//console.log('COMPILING: ' + compileStep._fullInputPath);
+
+	generatePackageRefs();
 
 	var fullPath = compileStep._fullInputPath;
 	var inputPath = '/' + compileStep.inputPath;
@@ -72,48 +254,28 @@ var handler = function (compileStep) {
 	// references
 	var dir = path.dirname(fullPath);
 	if (compileStep.packageName) {
-		var meteorPath = compileStep._fullInputPath.substring(
-			0,
-			compileStep._fullInputPath.length -
-			compileStep.inputPath.length -
-			compileStep.rootOutputPath.length
-		)  + 'packages';
-		if (!packageRefs[compileStep.packageName]) {
-			packageRefs[compileStep.packageName] = [];
-		}
-		if (!packageDirs[compileStep.packageName]) {
-			packageDirs[compileStep.packageName] = [];
-		}
-
-		var packDirs = packageDirs[compileStep.packageName];
-		var packRefs = packageRefs[compileStep.packageName];
-
-		if (packDirs.indexOf(dir) == -1) {
-			packDirs.push(dir);
-		}
-		if (packRefs.indexOf(fullPath) == -1) {
-			var packagePath = path.join(meteorPath, compileStep.packageName);
-			var packageDef = path.join(packagePath, '.package.d.ts');
-			var allPackageDef = path.join(meteorPath, '.packages.d.ts');
-			packRefs.push(fullPath);
-			fs.writeFileSync(allPackageDef, getAllPackageRefs(meteorPath, meteorPath));
-			packDirs.forEach(function (dir) {
-				fs.writeFileSync(path.join(dir, '.ref.d.ts'), '///<reference path="' + path.relative(dir, allPackageDef) + '" />\n');
-			});
-			fs.writeFileSync(packageDef, getPackageRefs(packagePath, compileStep.packageName));
-			fs.writeFileSync(path.join('.meteor', '.packages.d.ts'), '///<reference path="' + path.relative('.meteor', allPackageDef) + '" />\n');
-		}
+		var packagePath = path.join('../meteor/packages', compileStep.packageName);
+		fs.writeFileSync(path.join(dir, '.server.d.ts'),
+			'///<reference path="' + path.relative(dir, path.join(packagePath, '.deps-server.d.ts')) + '" />\n' +
+			'///<reference path="' + path.relative(dir, path.join(packagePath, '.package-server.d.ts')) + '" />\n'
+		);
+		fs.writeFileSync(path.join(dir, '.client.d.ts'),
+			'///<reference path="' + path.relative(dir, path.join(packagePath, '.deps-client.d.ts')) + '" />\n' +
+			'///<reference path="' + path.relative(dir, path.join(packagePath, '.package-client.d.ts')) + '" />\n'
+		);
 	}
 	else {
 		if (appDirs.indexOf(dir) == -1) {
 			appDirs.push(dir);
 		}
-		if (appRefs.indexOf(fullPath) == -1) {
-			appRefs.push(fullPath);
+		if (appRefs.indexOf(compileStep.inputPath) == -1) {
+			appRefs.push(compileStep.inputPath);
 			appDirs.forEach(function (dir) {
-				fs.writeFileSync(dir + "/.ref.d.ts", '///<reference path="' + path.relative(dir, '.meteor/.app.d.ts') + '" />\n');
+				fs.writeFileSync(dir + "/.server.d.ts", '///<reference path="' + path.relative(dir, '.meteor/.app-server.d.ts') + '" />\n');
+				fs.writeFileSync(dir + "/.client.d.ts", '///<reference path="' + path.relative(dir, '.meteor/.app-client.d.ts') + '" />\n');
 			});
-			fs.writeFileSync('.meteor/.app.d.ts', getAppRefs());
+			fs.writeFileSync('.meteor/.app-server.d.ts', getAppRefs('server'));
+			fs.writeFileSync('.meteor/.app-client.d.ts', getAppRefs('client'));
 		}
 	}
 
@@ -186,20 +348,20 @@ var handler = function (compileStep) {
 					'//@ sourceMappingURL=' + inputPath + '.map?' + changeTime.getTime()
 				)
 			);
-			var mapBuffer = new Buffer(
-				fs.readFileSync(mapPath).toString().replace(
-					/"sources":\["[0-9a-zA-Z-\/\.-]+"]/,
-					'"sources":["' + path.dirname(inputPath) + '/' + path.basename(inputPath) + '?' + changeTime.getTime() + '"]'
-				)
-			);
+//			var mapBuffer = new Buffer(
+//				fs.readFileSync(mapPath).toString().replace(
+//					/"sources":\["[0-9a-zA-Z-\/\.-]+"]/,
+//					'"sources":["' + path.dirname(inputPath) + '/' + path.basename(inputPath) + '?' + changeTime.getTime() + '"]'
+//				)
+//			);
 //			console.log('1: ' + jsPath);
 			if (error) {
 				try {
-					fs.unlinkSync(cachePath, sourceBuffer);
-					fs.unlinkSync(cachePath + '.js', compiledBuffer);
-					fs.unlinkSync(cachePath + '.map', mapBuffer);
+					fs.unlinkSync(cachePath);
+					fs.unlinkSync(cachePath + '.js');
+//					fs.unlinkSync(cachePath + '.map');
 					fs.unlinkSync(jsPath);
-					fs.unlinkSync(mapPath);
+//					fs.unlinkSync(mapPath);
 				}
 				catch (e) {
 					// ignore
@@ -208,17 +370,17 @@ var handler = function (compileStep) {
 			}
 			fs.writeFileSync(cachePath, sourceBuffer);
 			fs.writeFileSync(cachePath + '.js', compiledBuffer);
-			fs.writeFileSync(cachePath + '.map', mapBuffer);
+//			fs.writeFileSync(cachePath + '.map', mapBuffer);
 
 			fs.unlinkSync(jsPath);
-			fs.unlinkSync(mapPath);
+//			fs.unlinkSync(mapPath);
 
 		}
 		else {
 			try {
-				fs.unlinkSync(cachePath, sourceBuffer);
-				fs.unlinkSync(cachePath + '.js', compiledBuffer);
-				fs.unlinkSync(cachePath + '.map', mapBuffer);
+				fs.unlinkSync(cachePath);
+				fs.unlinkSync(cachePath + '.js');
+//				fs.unlinkSync(cachePath + '.map');
 			}
 			catch (e) {
 				// ignore
@@ -253,9 +415,6 @@ var handler = function (compileStep) {
 //	  sourceMap: fs.readFileSync(cachePath + '.map').toString()
 	});
 
-	if (error) {
-		throw new Error(error);
-	}
 };
 
 Plugin.registerSourceHandler("ts", handler);
