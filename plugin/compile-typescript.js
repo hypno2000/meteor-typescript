@@ -62,20 +62,7 @@ function getPackages() {
 		if (package.charAt(0) === '.') {
 			return;
 		}
-		if (typeof(packages[package]) === 'undefined') {
-			packages[package] = {
-				server: {
-					uses: {},
-					imply: {},
-					files: []
-				},
-				client: {
-					uses: {},
-					imply: {},
-					files: []
-				}
-			};
-		}
+		initPackage(package);
 		var packageJsPath = '../meteor/packages/' + package + '/package.js';
 		if (package.charAt(0) === '.' || !fs.existsSync(packageJsPath)) {
 			return;
@@ -89,20 +76,7 @@ function getPackages() {
 					name = [name];
 				}
 				name.forEach(function(item){
-					if (typeof(packages[item]) === 'undefined') {
-						packages[item] = {
-							server: {
-								uses: {},
-								imply: {},
-								files: []
-							},
-							client: {
-								uses: {},
-								imply: {},
-								files: []
-							}
-						};
-					}
+					initPackage(item);
 					if (inServer) {
 						packages[package].server.uses[item] = packages[item];
 					}
@@ -118,20 +92,7 @@ function getPackages() {
 					name = [name];
 				}
 				name.forEach(function(item){
-					if (typeof(packages[item]) === 'undefined') {
-						packages[item] = {
-							server: {
-								uses: {},
-								imply: {},
-								files: []
-							},
-							client: {
-								uses: {},
-								imply: {},
-								files: []
-							}
-						};
-					}
+					initPackage(item);
 					if (inServer) {
 						packages[package].server.imply[item] = packages[item];
 					}
@@ -163,6 +124,22 @@ function getPackages() {
 		}
 	});
 	return packages;
+	function initPackage(name) {
+		if (typeof(packages[name]) === 'undefined') {
+			packages[name] = {
+				server: {
+					uses: {},
+					imply: {},
+					files: []
+				},
+				client: {
+					uses: {},
+					imply: {},
+					files: []
+				}
+			}
+		}
+	}
 }
 
 function getTypescriptPackages() {
@@ -196,7 +173,16 @@ function getTypescriptPackages() {
 }
 
 var typescriptPackages;
+var lastGenerateTime;
 function generatePackageRefs() {
+	
+	// generate max once per second
+	var currentTime = new Date().getTime() / 1000;
+	if (lastGenerateTime && currentTime - lastGenerateTime < 1) {
+		return;
+	}
+	lastGenerateTime = currentTime;
+
 	var packages = typescriptPackages = getTypescriptPackages();
 	var packagesPath = '../meteor/packages';
 	for (var i in packages) {
@@ -222,7 +208,6 @@ function generatePackageRefs() {
 		}
 	}
 }
-
 
 var handler = function (compileStep) {
 	//console.log('COMPILING: ' + compileStep._fullInputPath);
@@ -295,10 +280,8 @@ var handler = function (compileStep) {
 
 		var ERROR = "\nTypeScript compilation failed!\n";
 		ERROR = ERROR + (new Array(ERROR.length - 1).join("-")) + "\n";
-		// XXX Use other npm packages. Seen in the handlebars package ;)
 
-		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath; // add client,server module type switch?
-		//console.log(compileCommand);
+		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
 
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
 		var result = null;
