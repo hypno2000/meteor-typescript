@@ -4,6 +4,9 @@ var mkdirp = Npm.require('mkdirp');
 
 var appRefs = [];
 var appDirs = [];
+var meteorPath = fs.existsSync('../meteor') ? '../meteor' : '../../meteor';
+var appPath = fs.existsSync('.meteor') ? '.meteor' : '../.meteor';
+var packagesPath = path.join(meteorPath, 'packages');
 
 // compiled js and sourcemaps will be cached here
 if (!fs.existsSync('.meteor/cache')) {
@@ -17,8 +20,8 @@ function getAppRefs(side) {
 		if (!entry || entry.charAt(0) === '#' || !typescriptPackages[entry]) {
 			return;
 		}
-		res += '///<reference path="' + path.relative('.meteor', path.join('../meteor/packages', entry, '.implies-' + side + '.d.ts')) + '" />\n';
-		res += '///<reference path="' + path.relative('.meteor', path.join('../meteor/packages', entry, '.files-' + side + '.d.ts')) + '" />\n';
+		res += '///<reference path="' + path.relative('.meteor', path.join(packagesPath, entry, '.implies-' + side + '.d.ts')) + '" />\n';
+		res += '///<reference path="' + path.relative('.meteor', path.join(packagesPath, entry, '.files-' + side + '.d.ts')) + '" />\n';
 	});
 	appRefs.forEach(function (entry) {
 		if (
@@ -50,12 +53,12 @@ function getPackages() {
 		use: function(){},
 		export: function(){}
 	}
-	fs.readdirSync('../meteor/packages').forEach(function(package){
+	fs.readdirSync(packagesPath).forEach(function(package){
 		if (package.charAt(0) === '.') {
 			return;
 		}
 		initPackage(package);
-		var packageJsPath = '../meteor/packages/' + package + '/package.js';
+		var packageJsPath = path.join(packagesPath, package, 'package.js');
 		if (package.charAt(0) === '.' || !fs.existsSync(packageJsPath)) {
 			return;
 		}
@@ -234,7 +237,6 @@ function generatePackageRefs() {
 	lastGenerateTime = currentTime;
 
 	var packages = typescriptPackages = getTypescriptPackages();
-	var packagesPath = '../meteor/packages';
 	for (var i in packages) {
 		for (var side in packages[i]) {
 			var package = packages[i][side];
@@ -300,7 +302,7 @@ var handler = function (compileStep) {
 	// references
 	var dir = path.dirname(fullPath);
 	if (compileStep.packageName) {
-		var packagePath = path.join('../meteor/packages', compileStep.packageName);
+		var packagePath = path.join(packagesPath, compileStep.packageName);
 		fs.writeFileSync(path.join(dir, '.server.d.ts'),
 			'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-server.d.ts')) + '" />\n' +
 			'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-server.d.ts')) + '" />\n'
@@ -354,16 +356,18 @@ var handler = function (compileStep) {
 			var lines = e.message.split('\n');
 			var errors = [];
 			for (var i = 0; i < lines.length; i++) {
-				//if (
+//				if (
 					//					lines[i].trim() &&
 					// !/The property '__super__' does not exist on value of type/.test(lines[i]) &&
 					//					lines[i].substr(-36) !== 'Base type must be interface or class' &&
 					//					lines[i].substr(-30) !== 'not exist in the current scope' &&
 					//									lines[i].substr(-24) !== 'lacks an implementation.'
 					//				lines[i].indexOf('error TS2095') == -1
-				//) {
+//									lines[i].indexOf('error TS2000') == -1  && // Duplicate identifier
+//									lines[i].indexOf('error TS2094') == -1 // The property does not exist on value of type
+//				) {
 					errors.push(lines[i]);
-				//}
+//				}
 			}
 			if (errors.length > 0) {
 				error = ERROR + errors.join('\n');
