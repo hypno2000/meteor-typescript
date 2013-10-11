@@ -339,21 +339,34 @@ var handler = function (compileStep) {
 //	console.log('TS cache exists: ' + cachePath + ' ' + fs.existsSync(cachePath));
 	if (!fs.existsSync(cachePath) || changeTime.getTime() > fs.statSync(cachePath).mtime.getTime()) {
 
-		var execSync = Npm.require('exec-sync');
+//		var execSync = Npm.require('exec-sync');
+		//var execSync = Npm.require('execSync');
+		var exec = Npm.require('child_process').exec;
+		var Future = Npm.require('fibers/future');
+		function execSync(command) {
+			var fut = new Future();
+			exec(command, function(error, stdout, stderr){
+				if (error) {
+					console.log(error);
+					return;
+				}
+				fut.return({
+					stdout: stdout,
+					stderr: stderr
+				})
+			});
+			return fut.wait();
+		}
 
 		var ERROR = "\nTypeScript compilation failed!\n";
 		ERROR = ERROR + (new Array(ERROR.length - 1).join("-")) + "\n";
 
-		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
-
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
-		var result = null;
+		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
+		var result = execSync(compileCommand);
+		if (result.stderr) {
 
-		try {
-			result = execSync(compileCommand);
-		} catch (e) {
-
-			var lines = e.message.split('\n');
+			var lines = result.stderr.split('\n');
 			var errors = [];
 			for (var i = 0; i < lines.length; i++) {
 //				if (
@@ -372,8 +385,6 @@ var handler = function (compileStep) {
 			if (errors.length > 0) {
 				error = ERROR + errors.join('\n');
 			}
-			else
-				result = true;
 		}
 		if (fs.existsSync(cacheDir + '/' + baseName + '.js')) {
 			jsPath = cacheDir + '/' + baseName + '.js';
