@@ -249,6 +249,18 @@ function generatePackageRefs() {
 			var refs = '';
 			for (var j in package.files) {
 				refs += '///<reference path="' + package.files[j] + '" />\n';
+
+				// shortcuts
+				var dir = path.dirname(path.join(packagePath, package.files[j]));
+				fs.writeFileSync(path.join(dir, '.server.d.ts'),
+					'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-server.d.ts')) + '" />\n' +
+					'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-server.d.ts')) + '" />\n'
+				);
+				fs.writeFileSync(path.join(dir, '.client.d.ts'),
+					'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-client.d.ts')) + '" />\n' +
+					'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-client.d.ts')) + '" />\n'
+				);
+
 			}
 			fs.writeFileSync(filesPath, refs);
 
