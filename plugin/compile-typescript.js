@@ -364,6 +364,7 @@ var handler = function (compileStep) {
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
 		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
 		var result = execSync(compileCommand);
+		console.log(compileCommand);
 		if (result.stderr) {
 
 			var lines = result.stderr.split('\n');
