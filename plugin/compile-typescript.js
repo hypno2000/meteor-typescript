@@ -314,15 +314,15 @@ var handler = function (compileStep) {
 	// references
 	var dir = path.dirname(fullPath);
 	if (compileStep.packageName) {
-		var packagePath = path.join(packagesPath, compileStep.packageName);
-		fs.writeFileSync(path.join(dir, '.server.d.ts'),
-			'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-server.d.ts')) + '" />\n' +
-			'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-server.d.ts')) + '" />\n'
-		);
-		fs.writeFileSync(path.join(dir, '.client.d.ts'),
-			'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-client.d.ts')) + '" />\n' +
-			'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-client.d.ts')) + '" />\n'
-		);
+//		var packagePath = path.join(packagesPath, compileStep.packageName);
+//		fs.writeFileSync(path.join(dir, '.server.d.ts'),
+//			'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-server.d.ts')) + '" />\n' +
+//			'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-server.d.ts')) + '" />\n'
+//		);
+//		fs.writeFileSync(path.join(dir, '.client.d.ts'),
+//			'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-client.d.ts')) + '" />\n' +
+//			'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-client.d.ts')) + '" />\n'
+//		);
 	}
 	else {
 		if (appDirs.indexOf(dir) == -1) {
