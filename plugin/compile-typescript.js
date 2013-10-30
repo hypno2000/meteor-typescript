@@ -60,7 +60,9 @@ function getPackages() {
 	}
 
 	fs.readdirSync(packagesPath).forEach(handlePackage);
-	fs.readdirSync('packages').forEach(handlePackage);
+	if (fs.existsSync('packages')) {
+		fs.readdirSync('packages').forEach(handlePackage);
+	}
 	return packages;
 
 	function initPackage(name) {
