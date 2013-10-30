@@ -258,7 +258,6 @@ function generatePackageRefs() {
 	lastGenerateTime = currentTime;
 
 	var packages = typescriptPackages = getTypescriptPackages();
-	console.log(packages);
 	for (var i in packages) {
 		var packagePath = packages[i].path;
 		for (var side in packages[i]) {
