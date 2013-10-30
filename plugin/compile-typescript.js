@@ -258,6 +258,7 @@ function generatePackageRefs() {
 	lastGenerateTime = currentTime;
 
 	var packages = typescriptPackages = getTypescriptPackages();
+	console.log(packages);
 	for (var i in packages) {
 		var packagePath = packages[i].path;
 		for (var side in packages[i]) {
@@ -294,18 +295,16 @@ function generatePackageRefs() {
 			// uses
 			refs = '';
 			for (j in package.uses) {
-				dir = path.dirname(packagePath);
-				refs += '///<reference path="' + path.relative(dir, path.join(package.uses[j].path, '.implies-' + side + '.d.ts')) + '" />\n';
-				refs += '///<reference path="' + path.relative(dir, path.join(package.uses[j].path, '.files-' + side + '.d.ts')) + '" />\n';
+				refs += '///<reference path="' + path.relative(packagePath, path.join(package.uses[j].path, '.implies-' + side + '.d.ts')) + '" />\n';
+				refs += '///<reference path="' + path.relative(packagePath, path.join(package.uses[j].path, '.files-' + side + '.d.ts')) + '" />\n';
 			}
 			fs.writeFileSync(usesPath, refs);
 
 			// implies
 			refs = '';
 			for (j in package.imply) {
-				dir = path.dirname(packagePath);
-				refs += '///<reference path="' + path.relative(dir, path.join(package.imply[j].path, '.implies-' + side + '.d.ts')) + '" />\n'
-				refs += '///<reference path="' + path.relative(dir, path.join(package.imply[j].path, '.files-' + side + '.d.ts')) + '" />\n'
+				refs += '///<reference path="' + path.relative(packagePath, path.join(package.imply[j].path, '.implies-' + side + '.d.ts')) + '" />\n'
+				refs += '///<reference path="' + path.relative(packagePath, path.join(package.imply[j].path, '.files-' + side + '.d.ts')) + '" />\n'
 			}
 			fs.writeFileSync(impliesPath, refs);
 
