@@ -17,11 +17,15 @@ function getAppRefs(side) {
 	var res = '';
 	var packages = fs.readFileSync('.meteor/packages').toString().split('\n');
 	packages.forEach(function (entry) {
-		if (!entry || entry.charAt(0) === '#' || !typescriptPackages[entry]) {
+		if (!entry || entry.charAt(0) === '#' || entry == 'path' || !typescriptPackages[entry]) {
 			return;
 		}
-		res += '///<reference path="' + path.relative('.meteor', path.join(packagesPath, entry, '.implies-' + side + '.d.ts')) + '" />\n';
-		res += '///<reference path="' + path.relative('.meteor', path.join(packagesPath, entry, '.files-' + side + '.d.ts')) + '" />\n';
+		var packagePath = path.join(packagesPath, entry);
+		if (fs.existsSync(path.join('packages', entry))) {
+			packagePath = path.join(path.join('packages', entry));
+		}
+		res += '///<reference path="' + path.relative('.meteor', path.join(packagePath, '.implies-' + side + '.d.ts')) + '" />\n';
+		res += '///<reference path="' + path.relative('.meteor', path.join(packagePath, '.files-' + side + '.d.ts')) + '" />\n';
 	});
 	appRefs.forEach(function (entry) {
 		if (
@@ -53,12 +57,42 @@ function getPackages() {
 		use: function(){},
 		export: function(){}
 	}
-	fs.readdirSync(packagesPath).forEach(function(package){
+
+	fs.readdirSync(packagesPath).forEach(handlePackage);
+	fs.readdirSync('packages').forEach(handlePackage);
+	return packages;
+
+	function initPackage(name) {
+		if (typeof(packages[name]) === 'undefined') {
+			var packagePath = path.join(packagesPath, name);
+			if (fs.existsSync(path.join('packages', name))) {
+				packagePath = path.join('packages', name);
+			}
+			packages[name] = {
+				path: packagePath,
+				server: {
+					uses: {},
+					imply: {},
+					files: []
+				},
+				client: {
+					uses: {},
+					imply: {},
+					files: []
+				}
+			}
+		}
+	}
+
+	function handlePackage(package) {
 		if (package.charAt(0) === '.') {
 			return;
 		}
 		initPackage(package);
 		var packageJsPath = path.join(packagesPath, package, 'package.js');
+		if (fs.existsSync(path.join('packages', package))) {
+			packageJsPath = path.join('packages', package, 'package.js');
+		}
 		if (package.charAt(0) === '.' || !fs.existsSync(packageJsPath)) {
 			return;
 		}
@@ -117,24 +151,8 @@ function getPackages() {
 			}
 			eval(packageJs);
 		}
-	});
-	return packages;
-	function initPackage(name) {
-		if (typeof(packages[name]) === 'undefined') {
-			packages[name] = {
-				server: {
-					uses: {},
-					imply: {},
-					files: []
-				},
-				client: {
-					uses: {},
-					imply: {},
-					files: []
-				}
-			}
-		}
 	}
+
 }
 
 // filters out only typescript packages
@@ -238,9 +256,9 @@ function generatePackageRefs() {
 
 	var packages = typescriptPackages = getTypescriptPackages();
 	for (var i in packages) {
+		var packagePath = packages[i].path;
 		for (var side in packages[i]) {
 			var package = packages[i][side];
-			var packagePath = path.join(packagesPath, i);
 			var filesPath = path.join(packagePath, '.files-' + side + '.d.ts');
 			var usesPath = path.join(packagePath, '.uses-' + side + '.d.ts');
 			var impliesPath = path.join(packagePath, '.implies-' + side + '.d.ts');
@@ -267,16 +285,16 @@ function generatePackageRefs() {
 			// uses
 			refs = '';
 			for (j in package.uses) {
-				refs += '///<reference path="' + path.join('..', j, '.implies-' + side + '.d.ts') + '" />\n';
-				refs += '///<reference path="' + path.join('..', j, '.files-' + side + '.d.ts') + '" />\n';
+				refs += '///<reference path="' + path.relative(dir, path.join(package.uses[j].path, '.implies-' + side + '.d.ts')) + '" />\n';
+				refs += '///<reference path="' + path.relative(dir, path.join(package.uses[j].path, '.files-' + side + '.d.ts')) + '" />\n';
 			}
 			fs.writeFileSync(usesPath, refs);
 
 			// implies
 			refs = '';
 			for (j in package.imply) {
-				refs += '///<reference path="' + path.join('..', j, '.implies-' + side + '.d.ts') + '" />\n'
-				refs += '///<reference path="' + path.join('..', j, '.files-' + side + '.d.ts') + '" />\n'
+				refs += '///<reference path="' + path.relative(dir, path.join(package.imply[j].path, '.implies-' + side + '.d.ts')) + '" />\n'
+				refs += '///<reference path="' + path.relative(dir, path.join(package.imply[j].path, '.files-' + side + '.d.ts')) + '" />\n'
 			}
 			fs.writeFileSync(impliesPath, refs);
 
