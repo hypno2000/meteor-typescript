@@ -323,7 +323,7 @@ var handler = function (compileStep) {
 
 	// cache check
 	//console.log(inputPath);
-	var cacheDir = '.meteor/cache';
+	var cacheDir = path.join(meteorPath, '.cache');
 	var cachePath = path.join(cacheDir, path.relative('../', fullPath));
 	var baseName = path.basename(fullPath, '.ts');
 	var changeTime = fs.statSync(fullPath).mtime;
