@@ -271,11 +271,12 @@ function generatePackageRefs() {
 
 			// own files
 			var refs = '';
+			var dir;
 			for (var j in package.files) {
 				refs += '///<reference path="' + package.files[j] + '" />\n';
 
 				// shortcuts
-				var dir = path.dirname(path.join(packagePath, package.files[j]));
+				dir = path.dirname(path.join(packagePath, package.files[j]));
 				fs.writeFileSync(path.join(dir, '.server.d.ts'),
 					'///<reference path="' + path.relative(dir, '.dummy.ts') + '" />\n' +
 					'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-server.d.ts')) + '" />\n' +
@@ -293,6 +294,7 @@ function generatePackageRefs() {
 			// uses
 			refs = '';
 			for (j in package.uses) {
+				dir = path.dirname(packagePath);
 				refs += '///<reference path="' + path.relative(dir, path.join(package.uses[j].path, '.implies-' + side + '.d.ts')) + '" />\n';
 				refs += '///<reference path="' + path.relative(dir, path.join(package.uses[j].path, '.files-' + side + '.d.ts')) + '" />\n';
 			}
@@ -301,6 +303,7 @@ function generatePackageRefs() {
 			// implies
 			refs = '';
 			for (j in package.imply) {
+				dir = path.dirname(packagePath);
 				refs += '///<reference path="' + path.relative(dir, path.join(package.imply[j].path, '.implies-' + side + '.d.ts')) + '" />\n'
 				refs += '///<reference path="' + path.relative(dir, path.join(package.imply[j].path, '.files-' + side + '.d.ts')) + '" />\n'
 			}
