@@ -35,6 +35,7 @@ function getAppRefs(side) {
 			res += '///<reference path="' + path.relative('.meteor', entry) + '" />\n';
 		}
 	});
+	res += '///<reference path="' + path.relative('.meteor', '.dummy.ts') + '" />\n';
 	return res;
 }
 
@@ -258,6 +259,9 @@ function generatePackageRefs() {
 	for (var i in packages) {
 		var packagePath = packages[i].path;
 		for (var side in packages[i]) {
+			if (side == 'path') {
+				continue;
+			}
 			var package = packages[i][side];
 			var filesPath = path.join(packagePath, '.files-' + side + '.d.ts');
 			var usesPath = path.join(packagePath, '.uses-' + side + '.d.ts');
@@ -271,10 +275,12 @@ function generatePackageRefs() {
 				// shortcuts
 				var dir = path.dirname(path.join(packagePath, package.files[j]));
 				fs.writeFileSync(path.join(dir, '.server.d.ts'),
+					'///<reference path="' + path.relative(dir, '.dummy.ts') + '" />\n' +
 					'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-server.d.ts')) + '" />\n' +
 					'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-server.d.ts')) + '" />\n'
 				);
 				fs.writeFileSync(path.join(dir, '.client.d.ts'),
+					'///<reference path="' + path.relative(dir, '.dummy.ts') + '" />\n' +
 					'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-client.d.ts')) + '" />\n' +
 					'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-client.d.ts')) + '" />\n'
 				);
@@ -315,18 +321,12 @@ var handler = function (compileStep) {
 
 	// cache check
 	//console.log(inputPath);
-	var cachePath = '.meteor/cache/' + (compileStep.packageName ? compileStep.packageName + '/' : '') + compileStep.inputPath;
-	var cacheDir = path.dirname(cachePath);
+	var cacheDir = '.meteor/cache';
+	var cachePath = path.join(cacheDir, path.relative('../', fullPath));
 	var baseName = path.basename(fullPath, '.ts');
 	var changeTime = fs.statSync(fullPath).mtime;
-	var jsPath;
-	if (inputPath.substring(0, 10) === '/packages/') {
-		jsPath = path.join(cacheDir, path.dirname(inputPath.substring(10)), baseName + '.js');
-	} else {
-		var rootPath = path.normalize(path.join(fullPath.substring(0, fullPath.length - inputPath.length), '/..'));
-		jsPath = path.join(cacheDir, path.dirname(path.relative(rootPath, fullPath)), baseName + '.js');
-	}
-	var mapPath = jsPath + '.map';
+	var jsPath = path.join(path.dirname(cachePath), baseName + '.js');
+//	var mapPath = jsPath + '.map';
 	var error;
 
 	// references
@@ -366,8 +366,8 @@ var handler = function (compileStep) {
 		mkdirp.sync(cacheDir);
 	}
 
-//	console.log('TS cache exists: ' + cachePath + ' ' + fs.existsSync(cachePath));
-	if (!fs.existsSync(cachePath) || changeTime.getTime() > fs.statSync(cachePath).mtime.getTime()) {
+//	console.log('TS cache exists: ' + jsPath + ' ' + fs.existsSync(jsPath));
+	if (!fs.existsSync(jsPath) || changeTime.getTime() > fs.statSync(jsPath).mtime.getTime()) {
 
 //		var execSync = Npm.require('exec-sync');
 		//var execSync = Npm.require('execSync');
@@ -392,8 +392,10 @@ var handler = function (compileStep) {
 		ERROR = ERROR + (new Array(ERROR.length - 1).join("-")) + "\n";
 
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
-		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
-		console.log('Compiling TypeScript file: ' + fullPath);
+//		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
+		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
+		console.log('Compiling TypeScript file: ' + path.relative('../', fullPath));
+//		console.log(compileCommand);
 		try {
 			var result = execSync(compileCommand);
 		}
@@ -401,6 +403,7 @@ var handler = function (compileStep) {
 			console.log('ERROR');
 			console.log(e);
 		}
+
 		if (result.stderr) {
 
 			var lines = result.stderr.split('\n');
@@ -423,18 +426,14 @@ var handler = function (compileStep) {
 				error = ERROR + errors.join('\n');
 			}
 		}
-		if (fs.existsSync(cacheDir + '/' + baseName + '.js')) {
-			jsPath = cacheDir + '/' + baseName + '.js';
-			mapPath = jsPath + '.map';
-		}
 		if (fs.existsSync(jsPath)) {
-			var sourceBuffer = new Buffer(fs.readFileSync(fullPath));
-			var compiledBuffer = new Buffer(
-				fs.readFileSync(jsPath).toString().replace(
-					/\/\/@ sourceMappingURL=[0-9a-zA-Z_.-]+/,
-					'//@ sourceMappingURL=' + inputPath + '.map?' + changeTime.getTime()
-				)
-			);
+//			var sourceBuffer = new Buffer(fs.readFileSync(fullPath));
+//			var compiledBuffer = new Buffer(
+//				fs.readFileSync(jsPath).toString().replace(
+//					/\/\/@ sourceMappingURL=[0-9a-zA-Z_.-]+/,
+//					'//@ sourceMappingURL=' + inputPath + '.map?' + changeTime.getTime()
+//				)
+//			);
 //			var mapBuffer = new Buffer(
 //				fs.readFileSync(mapPath).toString().replace(
 //					/"sources":\["[0-9a-zA-Z-\/\.-]+"]/,
@@ -443,8 +442,8 @@ var handler = function (compileStep) {
 //			);
 			if (error) {
 				try {
-					fs.unlinkSync(cachePath);
-					fs.unlinkSync(cachePath + '.js');
+//					fs.unlinkSync(cachePath);
+//					fs.unlinkSync(cachePath + '.js');
 //					fs.unlinkSync(cachePath + '.map');
 					fs.unlinkSync(jsPath);
 //					fs.unlinkSync(mapPath);
@@ -454,18 +453,19 @@ var handler = function (compileStep) {
 				}
 				throw new Error(error);
 			}
-			fs.writeFileSync(cachePath, sourceBuffer);
-			fs.writeFileSync(cachePath + '.js', compiledBuffer);
+//			fs.writeFileSync(cachePath, sourceBuffer);
+//			fs.writeFileSync(cachePath + '.js', compiledBuffer);
 //			fs.writeFileSync(cachePath + '.map', mapBuffer);
 
-			fs.unlinkSync(jsPath);
+//			fs.unlinkSync(jsPath);
 //			fs.unlinkSync(mapPath);
 
 		}
 		else {
 			try {
-				fs.unlinkSync(cachePath);
-				fs.unlinkSync(cachePath + '.js');
+				fs.unlinkSync(jsPath);
+//				fs.unlinkSync(cachePath);
+//				fs.unlinkSync(cachePath + '.js');
 //				fs.unlinkSync(cachePath + '.map');
 			}
 			catch (e) {
@@ -480,7 +480,9 @@ var handler = function (compileStep) {
 		}
 
 	}
-	var data = fs.readFileSync(cachePath + '.js').toString();
+	var data = fs.readFileSync(jsPath).toString();
+
+//	console.log('adding: ' + jsPath)
 
 	// couple of hacks for meteor namespaceing
 	var prep = '';
