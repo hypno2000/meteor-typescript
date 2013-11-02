@@ -379,13 +379,9 @@ var handler = function (compileStep) {
 		function execSync(command) {
 			var fut = new Future();
 			exec(command, function(error, stdout, stderr){
-				if (error) {
-					console.log(error);
-					return;
-				}
 				fut.return({
 					stdout: stdout,
-					stderr: stderr
+					stderr: stderr || error
 				})
 			});
 			return fut.wait();
