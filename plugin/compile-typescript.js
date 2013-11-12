@@ -7,10 +7,84 @@ var appDirs = [];
 var meteorPath = fs.existsSync('../meteor') ? '../meteor' : '../../meteor';
 var appPath = fs.existsSync('.meteor') ? '.meteor' : '../.meteor';
 var packagesPath = path.join(meteorPath, 'packages');
+var cacheContainerPath = path.join(meteorPath, '.cache');
+var allServerPath = path.join('.meteor', '.all-server.d.ts');
+var allClientPath = path.join('.meteor', '.all-client.d.ts');
+var allPath = path.join('.meteor', '.all.ts');
+var dummyPath = path.join('.meteor', '.dummy.ts');
 
-// compiled js and sourcemaps will be cached here
-if (!fs.existsSync('.meteor/cache')) {
-	mkdirp.sync('.meteor/cache');
+var typescriptPackages = getTypescriptPackages();
+
+initDirs();
+initAppRefs();
+
+function initDirs() {
+
+	// compiled js and sourcemaps will be cached here
+	if (!fs.existsSync(cacheContainerPath)) {
+		mkdirp.sync(cacheContainerPath);
+	}
+
+	if (!fs.existsSync(dummyPath)) {
+		fs.writeFileSync(dummyPath, '');
+	}
+
+	if (!fs.existsSync(allServerPath)) {
+		fs.writeFileSync(allServerPath,
+			'///<reference path=".packages-server.d.ts" />\n' +
+			'///<reference path=".app-server.d.ts" />\n'
+		);
+	}
+
+	if (!fs.existsSync(allClientPath)) {
+		fs.writeFileSync(allClientPath,
+			'///<reference path=".packages-client.d.ts" />\n' +
+			'///<reference path=".app-client.d.ts" />\n'
+		);
+	}
+
+	if (!fs.existsSync(allPath)) {
+		fs.writeFileSync(allPath,
+			'///<reference path=".dummy.ts" />\n' +
+			'///<reference path=".all-server.d.ts" />\n' +
+			'///<reference path=".all-client.d.ts" />\n'
+		);
+	}
+
+}
+
+function initAppRefs(curPath) {
+	if (!curPath) {
+		curPath = '.';
+	}
+	var addDir;
+	fs.readdirSync(curPath).forEach(function(item){
+		if (item.charAt(0) === '.') {
+			return;
+		}
+		var fullPath = path.join(curPath, item);
+		if (fs.lstatSync(fullPath).isDirectory()) {
+			initAppRefs(fullPath);
+		}
+		else if (item.slice(-3) === '.ts') {
+			addDir = true;
+			appRefs.push(fullPath);
+		}
+	});
+
+	if (addDir) {
+		appDirs.push(curPath);
+	}
+
+	if (curPath === '.') {
+		appDirs.forEach(function (dir) {
+			fs.writeFileSync(dir + "/.server.d.ts", '///<reference path="' + path.relative(dir, '.meteor/.app-server.d.ts') + '" />\n');
+			fs.writeFileSync(dir + "/.client.d.ts", '///<reference path="' + path.relative(dir, '.meteor/.app-client.d.ts') + '" />\n');
+		});
+		fs.writeFileSync('.meteor/.app-server.d.ts', getAppRefs('server'));
+		fs.writeFileSync('.meteor/.app-client.d.ts', getAppRefs('client'));
+	}
+
 }
 
 function getAppRefs(side) {
@@ -35,7 +109,7 @@ function getAppRefs(side) {
 			res += '///<reference path="' + path.relative('.meteor', entry) + '" />\n';
 		}
 	});
-	res += '///<reference path="' + path.relative('.meteor', '.dummy.ts') + '" />\n';
+//	res += '///<reference path="' + path.relative('.meteor', '.dummy.ts') + '" />\n';
 	return res;
 }
 
@@ -246,7 +320,6 @@ function getTypescriptPackages() {
 }
 
 // generates .d.ts reference files for packages
-var typescriptPackages;
 var lastGenerateTime;
 function generatePackageRefs() {
 
@@ -257,7 +330,9 @@ function generatePackageRefs() {
 	}
 	lastGenerateTime = currentTime;
 
-	var packages = typescriptPackages = getTypescriptPackages();
+	var packages = typescriptPackages;
+	var allServerRefs = '';
+	var allClientRefs = '';
 	for (var i in packages) {
 		var packagePath = packages[i].path;
 		for (var side in packages[i]) {
@@ -278,12 +353,12 @@ function generatePackageRefs() {
 				// shortcuts
 				dir = path.dirname(path.join(packagePath, package.files[j]));
 				fs.writeFileSync(path.join(dir, '.server.d.ts'),
-					'///<reference path="' + path.relative(dir, '.dummy.ts') + '" />\n' +
+//					'///<reference path="' + path.relative(dir, '.dummy.ts') + '" />\n' +
 					'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-server.d.ts')) + '" />\n' +
 					'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-server.d.ts')) + '" />\n'
 				);
 				fs.writeFileSync(path.join(dir, '.client.d.ts'),
-					'///<reference path="' + path.relative(dir, '.dummy.ts') + '" />\n' +
+//					'///<reference path="' + path.relative(dir, '.dummy.ts') + '" />\n' +
 					'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-client.d.ts')) + '" />\n' +
 					'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-client.d.ts')) + '" />\n'
 				);
@@ -307,8 +382,19 @@ function generatePackageRefs() {
 			}
 			fs.writeFileSync(impliesPath, refs);
 
+			if (side == 'server') {
+				allServerRefs += '///<reference path="' + path.relative('.meteor', filesPath) + '" />\n';
+			}
+			else if (side == 'client') {
+				allClientRefs += '///<reference path="' + path.relative('.meteor', filesPath) + '" />\n';
+			}
+
 		}
 	}
+
+	fs.writeFileSync(path.join('.meteor', '.packages-server.d.ts'), allServerRefs);
+	fs.writeFileSync(path.join('.meteor', '.packages-client.d.ts'), allClientRefs);
+
 }
 
 var handler = function (compileStep) {
@@ -333,7 +419,7 @@ var handler = function (compileStep) {
 	var error;
 
 	// references
-	var dir = path.dirname(fullPath);
+	var dir = path.dirname(path.relative('./', fullPath));
 	if (compileStep.packageName) {
 //		var packagePath = path.join(packagesPath, compileStep.packageName);
 //		fs.writeFileSync(path.join(dir, '.server.d.ts'),
@@ -392,8 +478,9 @@ var handler = function (compileStep) {
 
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
 //		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
-		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
-		console.log('Compiling TypeScript file: ' + path.relative('../', fullPath));
+//		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
+		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + allPath;
+		console.log('Compiling TypeScript...');// (triggered by ' + path.relative('../', fullPath) + ')');
 //		console.log(compileCommand);
 		try {
 			var result = execSync(compileCommand);
