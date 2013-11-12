@@ -7,7 +7,7 @@ var appDirs = [];
 var meteorPath = fs.existsSync('../meteor') ? '../meteor' : '../../meteor';
 var appPath = fs.existsSync('.meteor') ? '.meteor' : '../.meteor';
 var packagesPath = path.join(meteorPath, 'packages');
-var cacheContainerPath = path.join(meteorPath, '.cache');
+var cacheDir = path.join(meteorPath, '.cache');
 var allServerPath = path.join('.meteor', '.all-server.d.ts');
 var allClientPath = path.join('.meteor', '.all-client.d.ts');
 var allPath = path.join('.meteor', '.all.ts');
@@ -21,8 +21,8 @@ initAppRefs();
 function initDirs() {
 
 	// compiled js and sourcemaps will be cached here
-	if (!fs.existsSync(cacheContainerPath)) {
-		mkdirp.sync(cacheContainerPath);
+	if (!fs.existsSync(cacheDir)) {
+		mkdirp.sync(cacheDir);
 	}
 
 	if (!fs.existsSync(dummyPath)) {
@@ -410,7 +410,6 @@ var handler = function (compileStep) {
 
 	// cache check
 	//console.log(inputPath);
-	var cacheDir = path.join(meteorPath, '.cache');
 	var cachePath = path.join(cacheDir, path.relative('../', fullPath));
 	var baseName = path.basename(fullPath, '.ts');
 	var changeTime = fs.statSync(fullPath).mtime;
@@ -480,8 +479,9 @@ var handler = function (compileStep) {
 //		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
 //		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
 		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + allPath;
-		console.log('Compiling TypeScript...');// (triggered by ' + path.relative('../', fullPath) + ')');
-//		console.log(compileCommand);
+//		console.log('Compiling TypeScript...');
+		console.log('Compiling TypeScript... (triggered by ' + path.relative('../', fullPath) + ')');
+		console.log(compileCommand);
 		try {
 			var result = execSync(compileCommand);
 		}
@@ -490,11 +490,15 @@ var handler = function (compileStep) {
 			console.log(e);
 		}
 
+
 		if (result.stderr) {
 
 			var lines = result.stderr.split('\n');
-			var errors = [];
+			var errors = []
 			for (var i = 0; i < lines.length; i++) {
+				if (!lines[i]) {
+					continue;
+				}
 //				if (
 					//					lines[i].trim() &&
 					// !/The property '__super__' does not exist on value of type/.test(lines[i]) &&
@@ -558,7 +562,8 @@ var handler = function (compileStep) {
 				// ignore
 			}
 			if (error) {
-				throw new Error(error);
+				console.log(error);
+				throw new Error("Compilation error, aborting.");
 			}
 			else {
 				throw new Error(ERROR + 'file was not created: \n' + compileStep.inputPath + '\n' + jsPath + '\n' + inputPath + '\n' + cacheDir + '\n' + fullPath);
