@@ -479,9 +479,9 @@ var handler = function (compileStep) {
 //		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
 //		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
 		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + allPath;
-//		console.log('Compiling TypeScript...');
-		console.log('Compiling TypeScript... (triggered by ' + path.relative('../', fullPath) + ')');
-		console.log(compileCommand);
+		console.log('Compiling TypeScript...');
+//		console.log('Compiling TypeScript... (triggered by ' + path.relative('../', fullPath) + ')');
+//		console.log(compileCommand);
 		try {
 			var result = execSync(compileCommand);
 		}
