@@ -226,6 +226,7 @@ function getPackages() {
 			Package.on_use = function(callback){
 				callback(api);
 			}
+			Package.includeTool = function(){};
 			eval(packageJs);
 		}
 	}
