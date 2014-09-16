@@ -123,12 +123,17 @@ function getPackages() {
 		on_use: function(callback){
 			callback(api);
 		},
-		on_test: function(){}
+		onUse: function(callback){
+			callback(api);
+		},
+		on_test: function(){},
+		onTest: function(){},
 	};
 	Npm.depends = function(){};
-	Cordova.depends = function(){};
+	var Cordova = {depends: function(){}};
 	var api = {
 		add_files: function(){},
+		addFiles: function(){},
 		imply: function(){},
 		use: function(){},
 		export: function(){}
@@ -178,7 +183,7 @@ function getPackages() {
 		if (packageJs) {
 			api.use = function (name, where) {
 				var inServer = !where || where === 'server' || (where instanceof Array && where.indexOf('server') !== -1);
-				var inClient = !where || where === 'client' || (where instanceof Array && where.indexOf('client') !== -1);
+				var inClient = !where || where === 'client' || where === 'web.cordova' || (where instanceof Array && (where.indexOf('client') !== -1 || where.indexOf('web.cordova') !== -1));
 				if (!(name instanceof Array)) {
 					name = [name];
 				}
@@ -194,7 +199,7 @@ function getPackages() {
 			};
 			api.imply = function (name, where) {
 				var inServer = !where || where === 'server' || (where instanceof Array && where.indexOf('server') !== -1);
-				var inClient = !where || where === 'client' || (where instanceof Array && where.indexOf('client') !== -1);
+				var inClient = !where || where === 'client' || where === 'web.cordova' || (where instanceof Array && (where.indexOf('client') !== -1 || where.indexOf('web.cordova') !== -1));
 				if (!(name instanceof Array)) {
 					name = [name];
 				}
@@ -208,9 +213,9 @@ function getPackages() {
 					}
 				});
 			};
-			api.add_files = function (name, where) {
+			api.add_files = api.addFiles = function (name, where) {
 				var inServer = !where || where === 'server' || (where instanceof Array && where.indexOf('server') !== -1);
-				var inClient = !where || where === 'client' || (where instanceof Array && where.indexOf('client') !== -1);
+				var inClient = !where || where === 'client' || where === 'web.cordova' || (where instanceof Array && (where.indexOf('client') !== -1 || where.indexOf('web.cordova') !== -1));
 				if (!(name instanceof Array)) {
 					name = [name];
 				}
@@ -224,11 +229,17 @@ function getPackages() {
 					packages[package].client.files = packages[package].client.files.concat(items);
 				}
 			};
-			Package.on_use = function(callback){
+			Package.on_use = Package.onUse = function(callback){
 				callback(api);
 			}
 			Package.includeTool = function(){};
-			eval(packageJs);
+			try {
+				eval(packageJs);
+			}
+			catch (err) {
+				console.log(packageJs);
+				throw err;
+			}
 		}
 	}
 
