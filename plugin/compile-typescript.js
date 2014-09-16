@@ -126,6 +126,7 @@ function getPackages() {
 		on_test: function(){}
 	};
 	Npm.depends = function(){};
+	Cordova.depends = function(){};
 	var api = {
 		add_files: function(){},
 		imply: function(){},
