@@ -233,13 +233,7 @@ function getPackages() {
 				callback(api);
 			}
 			Package.includeTool = function(){};
-			try {
-				eval(packageJs);
-			}
-			catch (err) {
-				console.log(packageJs);
-				throw err;
-			}
+			eval(packageJs);
 		}
 	}
 
