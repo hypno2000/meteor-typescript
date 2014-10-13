@@ -581,9 +581,6 @@ var handler = function (compileStep) {
 	var data = fs.readFileSync(jsPath).toString();
 
 	//console.log('adding: ' + jsPath)
-	if (jsPath == '../meteor/.cache/meteor/packages/banking-betfair-api/betfair-api.js') {
-		console.log(data);
-	}
 	// couple of hacks for meteor namespaceing
 	var prep = '';
 	data = data
@@ -595,12 +592,6 @@ var handler = function (compileStep) {
 //		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
 //		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
 //		.replace(/^\s*var ([a-zA-Z0-9_]+);/, 'this.$1 = this.$1 || {};\nvar $1 = this.$1;');
-	if (jsPath == '../meteor/.cache/meteor/packages/banking-betfair-api/betfair-api.js') {
-		console.log('////////////////////////////////////////////////////////////////////////////');
-		console.log('////////////////////////////////////////////////////////////////////////////');
-		console.log('////////////////////////////////////////////////////////////////////////////');
-		console.log(data);
-	}
 	compileStep.addJavaScript({
 	  path: compileStep.inputPath + ".js",
 	  sourcePath: compileStep.inputPath,
