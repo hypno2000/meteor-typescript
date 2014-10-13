@@ -485,7 +485,7 @@ var handler = function (compileStep) {
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
 //		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
 //		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
-		var compileCommand = 'tsc --target ES5 --module commonjs --outDir ' + cacheDir + ' ' + allPath;
+		var compileCommand = 'tsc --target ES5 --module amd --outDir ' + cacheDir + ' ' + allPath;
 		console.log('Compiling TypeScript...');
 //		console.log('Compiling TypeScript... (triggered by ' + path.relative('../', fullPath) + ')');
 //		console.log(compileCommand);
