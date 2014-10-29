@@ -130,6 +130,7 @@ function getPackages() {
 		onTest: function(){},
 	};
 	Npm.depends = function(){};
+	Npm.strip = function(){};
 	var Cordova = {depends: function(){}};
 	var api = {
 		add_files: function(){},
