@@ -58,7 +58,7 @@ function initAppRefs(curPath) {
 		curPath = '.';
 	}
 	var addDir;
-	fs.readdirSync(curPath).forEach(function(item){
+	fs.readdirSync(curPath).forEach(function (item) {
 		if (item.charAt(0) === '.') {
 			return;
 		}
@@ -117,27 +117,42 @@ function getAppRefs(side) {
 function getPackages() {
 	var packages = {};
 	var Package = {
-		describe: function(){},
-		_transitional_registerBuildPlugin: function(){},
-		register_extension: function(){},
-		on_use: function(callback){
+		describe: function () {
+		},
+		_transitional_registerBuildPlugin: function () {
+		},
+		register_extension: function () {
+		},
+		on_use: function (callback) {
 			callback(api);
 		},
-		onUse: function(callback){
+		onUse: function (callback) {
 			callback(api);
 		},
-		on_test: function(){},
-		onTest: function(){},
+		on_test: function () {
+		},
+		onTest: function () {
+		},
 	};
-	Npm.depends = function(){};
-	Npm.strip = function(){};
-	var Cordova = {depends: function(){}};
+	Npm.depends = function () {
+	};
+	Npm.strip = function () {
+	};
+	var Cordova = {
+		depends: function () {
+		}
+	};
 	var api = {
-		add_files: function(){},
-		addFiles: function(){},
-		imply: function(){},
-		use: function(){},
-		export: function(){}
+		add_files: function () {
+		},
+		addFiles: function () {
+		},
+		imply: function () {
+		},
+		use: function () {
+		},
+		export: function () {
+		}
 	}
 
 	fs.readdirSync(packagesPath).forEach(handlePackage);
@@ -188,7 +203,7 @@ function getPackages() {
 				if (!(name instanceof Array)) {
 					name = [name];
 				}
-				name.forEach(function(item){
+				name.forEach(function (item) {
 					initPackage(item);
 					if (inServer) {
 						packages[package].server.uses[item] = packages[item];
@@ -204,7 +219,7 @@ function getPackages() {
 				if (!(name instanceof Array)) {
 					name = [name];
 				}
-				name.forEach(function(item){
+				name.forEach(function (item) {
 					initPackage(item);
 					if (inServer) {
 						packages[package].server.imply[item] = packages[item];
@@ -220,7 +235,7 @@ function getPackages() {
 				if (!(name instanceof Array)) {
 					name = [name];
 				}
-				var items = name.filter(function(item){
+				var items = name.filter(function (item) {
 					return item.substr(item.length - 3) === '.ts';
 				});
 				if (inServer) {
@@ -230,10 +245,11 @@ function getPackages() {
 					packages[package].client.files = packages[package].client.files.concat(items);
 				}
 			};
-			Package.on_use = Package.onUse = function(callback){
+			Package.on_use = Package.onUse = function (callback) {
 				callback(api);
 			}
-			Package.includeTool = function(){};
+			Package.includeTool = function () {
+			};
 			eval(packageJs);
 		}
 	}
@@ -302,7 +318,7 @@ function getTypescriptPackages() {
 		}
 		return false;
 
-		function checkImpliesServer(package){
+		function checkImpliesServer(package) {
 			if (package.server.imply.typescript) {
 				return true;
 			}
@@ -313,7 +329,8 @@ function getTypescriptPackages() {
 			}
 			return false;
 		}
-		function checkImpliesClient(package){
+
+		function checkImpliesClient(package) {
 			if (package.client.imply.typescript) {
 				return true;
 			}
@@ -469,9 +486,10 @@ var handler = function (compileStep) {
 		//var execSync = Npm.require('execSync');
 		var exec = Npm.require('child_process').exec;
 		var Future = Npm.require('fibers/future');
+
 		function execSync(command) {
 			var fut = new Future();
-			exec(command, function(error, stdout, stderr){
+			exec(command, function (error, stdout, stderr) {
 				fut.return({
 					stdout: stdout,
 					stderr: stderr || error
@@ -486,7 +504,7 @@ var handler = function (compileStep) {
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
 //		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
 //		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
-		var compileCommand = 'tsc --target ES5 --module amd --outDir ' + cacheDir + ' ' + allPath;
+		var compileCommand = 'tsc --target ES5 --sourcemap --module amd --outDir ' + cacheDir + ' ' + allPath;
 		console.log('Compiling TypeScript...');
 //		console.log('Compiling TypeScript... (triggered by ' + path.relative('../', fullPath) + ')');
 //		console.log(compileCommand);
@@ -508,16 +526,16 @@ var handler = function (compileStep) {
 					continue;
 				}
 //				if (
-					//					lines[i].trim() &&
-					// !/The property '__super__' does not exist on value of type/.test(lines[i]) &&
-					//					lines[i].substr(-36) !== 'Base type must be interface or class' &&
-					//					lines[i].substr(-30) !== 'not exist in the current scope' &&
-					//									lines[i].substr(-24) !== 'lacks an implementation.'
-					//				lines[i].indexOf('error TS2095') == -1
+				//					lines[i].trim() &&
+				// !/The property '__super__' does not exist on value of type/.test(lines[i]) &&
+				//					lines[i].substr(-36) !== 'Base type must be interface or class' &&
+				//					lines[i].substr(-30) !== 'not exist in the current scope' &&
+				//									lines[i].substr(-24) !== 'lacks an implementation.'
+				//				lines[i].indexOf('error TS2095') == -1
 //									lines[i].indexOf('error TS2000') == -1  && // Duplicate identifier
 //									lines[i].indexOf('error TS2094') == -1 // The property does not exist on value of type
 //				) {
-					errors.push(lines[i]);
+				errors.push(lines[i]);
 //				}
 			}
 			if (errors.length > 0) {
@@ -525,7 +543,7 @@ var handler = function (compileStep) {
 			}
 		}
 		if (fs.existsSync(jsPath)) {
-//			var sourceBuffer = new Buffer(fs.readFileSync(fullPath));
+			//var sourceBuffer = new Buffer(fs.readFileSync(fullPath));
 //			var compiledBuffer = new Buffer(
 //				fs.readFileSync(jsPath).toString().replace(
 //					/\/\/@ sourceMappingURL=[0-9a-zA-Z_.-]+/,
@@ -540,11 +558,11 @@ var handler = function (compileStep) {
 //			);
 			if (error) {
 				try {
+					fs.unlinkSync(jsPath);
+					fs.unlinkSync(cachePath + '.map');
 //					fs.unlinkSync(cachePath);
 //					fs.unlinkSync(cachePath + '.js');
-//					fs.unlinkSync(cachePath + '.map');
-					fs.unlinkSync(jsPath);
-//					fs.unlinkSync(mapPath);
+					//fs.unlinkSync(mapPath);
 				}
 				catch (e) {
 					// ignore
@@ -562,9 +580,9 @@ var handler = function (compileStep) {
 		else {
 			try {
 				fs.unlinkSync(jsPath);
+				fs.unlinkSync(cachePath + '.map');
 //				fs.unlinkSync(cachePath);
 //				fs.unlinkSync(cachePath + '.js');
-//				fs.unlinkSync(cachePath + '.map');
 			}
 			catch (e) {
 				// ignore
@@ -588,18 +606,34 @@ var handler = function (compileStep) {
 		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
 		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n(\/\*(.|\n)+\*\/\n)?)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
 		.replace(/^\s*var ([a-zA-Z0-9_]+);/, prep)
-		.replace(/\}\)\(([a-zA-Z0-9_]+) \|\| \(([a-zA-Z0-9_]+) = \{\}\)\);(\n\/\/# sourceMappingURL)/, '})($1);$3');
+		.replace(/\/\/# sourceMappingURL=.+/, '');
+//		.replace(/\}\)\(([a-zA-Z0-9_]+) \|\| \(([a-zA-Z0-9_]+) = \{\}\)\);(\n\/\/# sourceMappingURL)/, '})($1);$3');
 //	data = data
 //		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
 //		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
 //		.replace(/^\s*var ([a-zA-Z0-9_]+);/, 'this.$1 = this.$1 || {};\nvar $1 = this.$1;');
+	var map = fs.readFileSync(jsPath + '.map')
+		.toString()
+		.replace(/"sources":\["[0-9a-zA-Z-\/\.-]+"]/, '"sources":["' + compileStep.pathForSourceMap + '"]');
+	map = map.substr(0, map.length - 1) + ',"sourcesContent":["' +  fs.readFileSync(fullPath)
+		.toString()
+		.replace(/[\\]/g, '\\\\')
+		.replace(/["]/g, '\\"')
+		.replace(/[\b]/g, '\\b')
+		.replace(/[\f]/g, '\\f')
+		.replace(/[\n]/g, '\\n')
+		.replace(/[\r]/g, '\\r')
+		.replace(/[\t]/g, '\\t') + '"]}';
 	compileStep.addJavaScript({
-	  path: compileStep.inputPath + ".js",
-	  sourcePath: compileStep.inputPath,
-	  data: data
-//	  sourceMap: fs.readFileSync(cachePath + '.map').toString()
+		path: compileStep.inputPath + ".js",
+		sourcePath: compileStep.inputPath,
+		data: data,
+		sourceMap: map,
+		bare: compileStep.fileOptions.bare
 	});
-
 };
 
 Plugin.registerSourceHandler("ts", handler);
+
+//sources":["ejson-models/lib/classes.coffee
+//sources":["../../../../packages/banking/client.ts"]
