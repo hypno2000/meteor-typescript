@@ -123,6 +123,8 @@ function getPackages() {
 		},
 		register_extension: function () {
 		},
+		registerExtension: function () {
+		},
 		on_use: function (callback) {
 			callback(api);
 		},
@@ -133,6 +135,8 @@ function getPackages() {
 		},
 		onTest: function () {
 		},
+		registerBuildPlugin: function() {
+		}
 	};
 	Npm.depends = function () {
 	};
