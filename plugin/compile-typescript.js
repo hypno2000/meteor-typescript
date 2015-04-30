@@ -6,6 +6,7 @@ var appRefs = [];
 var appDirs = [];
 var meteorPath = fs.existsSync('../meteor') ? '../meteor' : '../../meteor';
 var appPath = fs.existsSync('.meteor') ? '.meteor' : '../.meteor';
+var isApp = fs.existsSync(path.join(appPath, 'release'));
 var packagesPath = path.join(meteorPath, 'packages');
 var cacheDir = path.join(meteorPath, '.cache');
 var allServerPath = path.join('.meteor', '.all-server.d.ts');
@@ -89,7 +90,7 @@ function initAppRefs(curPath) {
 
 function getAppRefs(side) {
 	var res = '';
-	var packages = fs.readFileSync('.meteor/packages').toString().split('\n');
+	var packages = isApp ? fs.readFileSync('.meteor/packages').toString().split('\n') : [process.argv[3].split('/')[1]];
 	packages.forEach(function (entry) {
 		if (!entry || entry.charAt(0) === '#' || entry == 'path' || !typescriptPackages[entry]) {
 			return;
@@ -131,9 +132,11 @@ function getPackages() {
 		onUse: function (callback) {
 			callback(api);
 		},
-		on_test: function () {
+		on_test: function (callback) {
+			callback(api);
 		},
-		onTest: function () {
+		onTest: function (callback) {
+			callback(api);
 		},
 		registerBuildPlugin: function() {
 		}
@@ -251,7 +254,10 @@ function getPackages() {
 			};
 			Package.on_use = Package.onUse = function (callback) {
 				callback(api);
-			}
+			};
+			Package.on_test = Package.onTest = function (callback) {
+				callback(api);
+			};
 			Package.includeTool = function () {
 			};
 			eval(packageJs);
@@ -430,7 +436,6 @@ var handler = function (compileStep) {
 	//console.log('COMPILING: ' + compileStep._fullInputPath);
 
 	generatePackageRefs();
-
 	var fullPath = compileStep._fullInputPath;
 	var inputPath = '/' + compileStep.inputPath;
 
@@ -439,7 +444,7 @@ var handler = function (compileStep) {
 
 	// cache check
 	//console.log(inputPath);
-	var cachePath = path.join(cacheDir, path.relative('../', fullPath));
+	var cachePath = path.join(cacheDir, isApp ? path.relative('../', fullPath) : path.relative('./', fullPath));
 	var baseName = path.basename(fullPath, '.ts');
 	var changeTime = fs.statSync(fullPath).mtime;
 	var jsPath = path.join(path.dirname(cachePath), baseName + '.js');
