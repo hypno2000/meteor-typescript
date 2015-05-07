@@ -13,6 +13,7 @@ var allServerPath = path.join('.meteor', '.all-server.d.ts');
 var allClientPath = path.join('.meteor', '.all-client.d.ts');
 var allPath = path.join('.meteor', '.all.ts');
 var dummyPath = path.join('.meteor', '.dummy.ts');
+var compilerPath = path.join(packagesPath, 'typescript', 'lib', 'typescript');
 
 var typescriptPackages = getTypescriptPackages();
 
@@ -509,11 +510,18 @@ var handler = function (compileStep) {
 
 		var ERROR = "\nTypeScript compilation failed!\n";
 		ERROR = ERROR + (new Array(ERROR.length - 1).join("-")) + "\n";
-
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
 //		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
 //		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
-		var compileCommand = 'tsc --target ES5 --sourcemap --module amd --outDir ' + cacheDir + ' ' + allPath;
+		var compileCommand = 'node ' + compilerPath + '/tsc.js '+
+			'--target ES5 ' +
+			'--sourcemap ' +
+			'--module amd ' +
+			'--emitDecoratorMetadata ' +
+			'--emitVerboseMetadata ' +
+			'--skipEmitVarForModule ' +
+			'--outDir ' + cacheDir + ' ' +
+			allPath;
 		//console.log('Compiling TypeScript...');
 //		console.log('Compiling TypeScript... (triggered by ' + path.relative('../', fullPath) + ')');
 //		console.log(compileCommand);
@@ -524,7 +532,7 @@ var handler = function (compileStep) {
 			console.log('ERROR');
 			console.log(e);
 		}
-
+		//console.log(result)
 
 		if (result.stderr) {
 
@@ -609,18 +617,20 @@ var handler = function (compileStep) {
 	var data = fs.readFileSync(jsPath).toString();
 
 	//console.log('adding: ' + jsPath)
-	// couple of hacks for meteor namespaceing
+	// couple of hacks for meteor namespacing
 	var prep = '';
 	data = data
-		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
-		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n(\/\*(.|\n)+\*\/\n)?)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
-		.replace(/^\s*var ([a-zA-Z0-9_]+);/, prep)
+		//.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
+		//.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n(\/\*(.|\n)+\*\/\n)?)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
+		//.replace(/(var __decorate[\w\s!="\(\)&|,.;:}{]*};\n)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
+		//.replace(/^\s*var ([a-zA-Z0-9_]+);/, prep)
 		.replace(/\/\/# sourceMappingURL=.+/, '');
 //		.replace(/\}\)\(([a-zA-Z0-9_]+) \|\| \(([a-zA-Z0-9_]+) = \{\}\)\);(\n\/\/# sourceMappingURL)/, '})($1);$3');
 //	data = data
 //		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
 //		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
 //		.replace(/^\s*var ([a-zA-Z0-9_]+);/, 'this.$1 = this.$1 || {};\nvar $1 = this.$1;');
+
 	var map = fs.readFileSync(jsPath + '.map')
 		.toString()
 		.replace(/"sources":\["[0-9a-zA-Z-\/\.-]+"]/, '"sources":["' + compileStep.pathForSourceMap + '"]');
