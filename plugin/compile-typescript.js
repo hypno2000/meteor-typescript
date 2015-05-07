@@ -513,13 +513,19 @@ var handler = function (compileStep) {
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
 //		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
 //		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
-		var compileCommand = 'node ' + compilerPath + '/tsc.js '+
+//		var compileCommand = 'node ' + compilerPath + '/tsc.js '+
+//			'--target ES5 ' +
+//			'--sourcemap ' +
+//			'--module amd ' +
+//			'--emitDecoratorMetadata ' +
+//			'--emitVerboseMetadata ' +
+//			'--skipEmitVarForModule ' +
+//			'--outDir ' + cacheDir + ' ' +
+//			allPath;
+		var compileCommand = 'tsc '+
 			'--target ES5 ' +
 			'--sourcemap ' +
 			'--module amd ' +
-			'--emitDecoratorMetadata ' +
-			'--emitVerboseMetadata ' +
-			'--skipEmitVarForModule ' +
 			'--outDir ' + cacheDir + ' ' +
 			allPath;
 		//console.log('Compiling TypeScript...');
@@ -620,9 +626,9 @@ var handler = function (compileStep) {
 	// couple of hacks for meteor namespacing
 	var prep = '';
 	data = data
-		//.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
+		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
 		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n(\/\*(.|\n)+\*\/\n)?)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
-		//.replace(/(var __decorate[\w\s!="\(\)&|,.;:}{]*};\n)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
+		.replace(/(var __decorate[\w\s!="\(\)&|,.;:}{]*};\n)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
 		.replace(/^\s*var ([a-zA-Z0-9_]+);/, prep)
 		.replace(/\/\/# sourceMappingURL=.+/, '');
 //		.replace(/\}\)\(([a-zA-Z0-9_]+) \|\| \(([a-zA-Z0-9_]+) = \{\}\)\);(\n\/\/# sourceMappingURL)/, '})($1);$3');
