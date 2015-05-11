@@ -4,7 +4,7 @@ var mkdirp = Npm.require('mkdirp');
 
 var appRefs = [];
 var appDirs = [];
-var meteorPath = fs.existsSync('../meteor') ? '../meteor' : '../../meteor';
+var meteorPath = fs.existsSync(path.join('..', 'meteor')) ? path.join('..', 'meteor') : path.join('..', '..', 'meteor');
 var appPath = fs.existsSync('.meteor') ? '.meteor' : '../.meteor';
 var isApp = fs.existsSync(path.join(appPath, 'release'));
 var packagesPath = path.join(meteorPath, 'packages');
@@ -13,7 +13,7 @@ var allServerPath = path.join('.meteor', '.all-server.d.ts');
 var allClientPath = path.join('.meteor', '.all-client.d.ts');
 var allPath = path.join('.meteor', '.all.ts');
 var dummyPath = path.join('.meteor', '.dummy.ts');
-var compilerPath = path.join(packagesPath, 'typescript', 'lib', 'typescript');
+var compilerPath = path.join(packagesPath, 'typescript', 'lib', 'typescript', 'tsc.js');
 
 var typescriptPackages = getTypescriptPackages();
 
@@ -58,7 +58,7 @@ function initDirs() {
 function initAppRefs(curPath) {
 	if (!curPath) {
 		curPath = '.';
-	}
+	}1
 	var addDir;
 	fs.readdirSync(curPath).forEach(function (item) {
 		if (item.charAt(0) === '.') {
@@ -80,18 +80,18 @@ function initAppRefs(curPath) {
 
 	if (curPath === '.') {
 		appDirs.forEach(function (dir) {
-			fs.writeFileSync(dir + "/.server.d.ts", '///<reference path="' + path.relative(dir, '.meteor/.app-server.d.ts') + '" />\n');
-			fs.writeFileSync(dir + "/.client.d.ts", '///<reference path="' + path.relative(dir, '.meteor/.app-client.d.ts') + '" />\n');
+			fs.writeFileSync(path.join(dir,  ".server.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.app-server.d.ts')) + '" />\n');
+			fs.writeFileSync(path.join(dir, "client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.app-client.d.ts')) + '" />\n');
 		});
-		fs.writeFileSync('.meteor/.app-server.d.ts', getAppRefs('server'));
-		fs.writeFileSync('.meteor/.app-client.d.ts', getAppRefs('client'));
+		fs.writeFileSync(path.join('.meteor', '.app-server.d.ts'), getAppRefs('server'));
+		fs.writeFileSync(path.join('.meteor', '.app-client.d.ts'), getAppRefs('client'));
 	}
 
 }
 
 function getAppRefs(side) {
 	var res = '';
-	var packages = isApp ? fs.readFileSync('.meteor/packages').toString().split('\n') : [process.argv[3].split('/')[1]];
+	var packages = isApp ? fs.readFileSync(path.join('.meteor', 'packages')).toString().split('\n') : [process.argv[3].split('/')[1]];
 	packages.forEach(function (entry) {
 		if (!entry || entry.charAt(0) === '#' || entry == 'path' || !typescriptPackages[entry]) {
 			return;
@@ -472,11 +472,11 @@ var handler = function (compileStep) {
 		if (appRefs.indexOf(compileStep.inputPath) == -1) {
 			appRefs.push(compileStep.inputPath);
 			appDirs.forEach(function (dir) {
-				fs.writeFileSync(dir + "/.server.d.ts", '///<reference path="' + path.relative(dir, '.meteor/.app-server.d.ts') + '" />\n');
-				fs.writeFileSync(dir + "/.client.d.ts", '///<reference path="' + path.relative(dir, '.meteor/.app-client.d.ts') + '" />\n');
+				fs.writeFileSync(path.join(dir, ".server.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.app-server.d.ts')) + '" />\n');
+				fs.writeFileSync(path.join(dir, ".client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.app-client.d.ts')) + '" />\n');
 			});
-			fs.writeFileSync('.meteor/.app-server.d.ts', getAppRefs('server'));
-			fs.writeFileSync('.meteor/.app-client.d.ts', getAppRefs('client'));
+			fs.writeFileSync(path.join('.meteor', '.app-server.d.ts'), getAppRefs('server'));
+			fs.writeFileSync(path.join('.meteor', '.app-client.d.ts'), getAppRefs('client'));
 		}
 	}
 
@@ -513,21 +513,21 @@ var handler = function (compileStep) {
 		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
 //		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
 //		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
-//		var compileCommand = 'node ' + compilerPath + '/tsc.js '+
-//			'--target ES5 ' +
-//			'--sourcemap ' +
-//			'--module amd ' +
-//			'--emitDecoratorMetadata ' +
-//			'--emitVerboseMetadata ' +
-//			'--skipEmitVarForModule ' +
-//			'--outDir ' + cacheDir + ' ' +
-//			allPath;
-		var compileCommand = 'tsc '+
+		var compileCommand = 'node ' + compilerPath + ' ' +
 			'--target ES5 ' +
 			'--sourcemap ' +
 			'--module amd ' +
+			'--emitDecoratorMetadata ' +
+			'--emitVerboseMetadata ' +
+			'--skipEmitVarForModule ' +
 			'--outDir ' + cacheDir + ' ' +
 			allPath;
+		//var compileCommand = 'tsc '+
+		//	'--target ES5 ' +
+		//	'--sourcemap ' +
+		//	'--module amd ' +
+		//	'--outDir ' + cacheDir + ' ' +
+		//	allPath;
 		//console.log('Compiling TypeScript...');
 //		console.log('Compiling TypeScript... (triggered by ' + path.relative('../', fullPath) + ')');
 //		console.log(compileCommand);
@@ -626,10 +626,10 @@ var handler = function (compileStep) {
 	// couple of hacks for meteor namespacing
 	var prep = '';
 	data = data
-		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
-		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n(\/\*(.|\n)+\*\/\n)?)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
-		.replace(/(var __decorate[\w\s!="\(\)&|,.;:}{]*};\n)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
-		.replace(/^\s*var ([a-zA-Z0-9_]+);/, prep)
+		//.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
+		//.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n(\/\*(.|\n)+\*\/\n)?)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
+		//.replace(/(var __decorate[\w\s!="\(\)&|,.;:}{]*};\n)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
+		//.replace(/^\s*var ([a-zA-Z0-9_]+);/, prep)
 		.replace(/\/\/# sourceMappingURL=.+/, '');
 //		.replace(/\}\)\(([a-zA-Z0-9_]+) \|\| \(([a-zA-Z0-9_]+) = \{\}\)\);(\n\/\/# sourceMappingURL)/, '})($1);$3');
 //	data = data
