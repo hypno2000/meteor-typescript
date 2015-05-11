@@ -81,7 +81,7 @@ function initAppRefs(curPath) {
 	if (curPath === '.') {
 		appDirs.forEach(function (dir) {
 			fs.writeFileSync(path.join(dir,  ".server.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.app-server.d.ts')) + '" />\n');
-			fs.writeFileSync(path.join(dir, "client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.app-client.d.ts')) + '" />\n');
+			fs.writeFileSync(path.join(dir, ".client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.app-client.d.ts')) + '" />\n');
 		});
 		fs.writeFileSync(path.join('.meteor', '.app-server.d.ts'), getAppRefs('server'));
 		fs.writeFileSync(path.join('.meteor', '.app-client.d.ts'), getAppRefs('client'));
