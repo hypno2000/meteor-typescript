@@ -52,7 +52,6 @@ function initDirs() {
 			'///<reference path=".all-client.d.ts" />\n'
 		);
 	}
-
 }
 
 function initAppRefs(curPath) {
