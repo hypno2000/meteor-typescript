@@ -17,6 +17,13 @@ declare module "typescript" {
     interface Map<T> {
         [index: string]: T;
     }
+    interface FileMap<T> {
+        get(fileName: string): T;
+        set(fileName: string, value: T): void;
+        contains(fileName: string): boolean;
+        remove(fileName: string): void;
+        forEachValue(f: (v: T) => void): void;
+    }
     interface TextRange {
         pos: number;
         end: number;
@@ -748,7 +755,7 @@ declare module "typescript" {
             path: string;
             name: string;
         }[];
-        amdModuleName: string;
+        moduleName: string;
         referencedFiles: FileReference[];
         hasNoDefaultLib: boolean;
         languageVersion: ScriptTarget;
@@ -1114,7 +1121,8 @@ declare module "typescript" {
         target?: ScriptTarget;
         version?: boolean;
         watch?: boolean;
-        separateCompilation?: boolean;
+        isolatedModules?: boolean;
+        experimentalDecorators?: boolean;
         emitDecoratorMetadata?: boolean;
         emitVerboseMetadata?: boolean;
         skipEmitVarForModule?: boolean;
@@ -1369,6 +1377,8 @@ declare module "typescript" {
          * not happen and the entire document will be re - parsed.
          */
         getChangeRange(oldSnapshot: IScriptSnapshot): TextChangeRange;
+        /** Releases all resources held by this script snapshot */
+        dispose?(): void;
     }
     module ScriptSnapshot {
         function fromString(text: string): IScriptSnapshot;
@@ -1381,6 +1391,7 @@ declare module "typescript" {
     interface LanguageServiceHost {
         getCompilationSettings(): CompilerOptions;
         getNewLine?(): string;
+        getProjectVersion?(): string;
         getScriptFileNames(): string[];
         getScriptVersion(fileName: string): string;
         getScriptSnapshot(fileName: string): IScriptSnapshot;
@@ -1391,6 +1402,7 @@ declare module "typescript" {
         log?(s: string): void;
         trace?(s: string): void;
         error?(s: string): void;
+        useCaseSensitiveFileNames?(): boolean;
     }
     interface LanguageService {
         cleanupSemanticCache(): void;
@@ -1847,11 +1859,11 @@ declare module "typescript" {
         isCancellationRequested(): boolean;
         throwIfCancellationRequested(): void;
     }
-    function transpile(input: string, compilerOptions?: CompilerOptions, fileName?: string, diagnostics?: Diagnostic[]): string;
+    function transpile(input: string, compilerOptions?: CompilerOptions, fileName?: string, diagnostics?: Diagnostic[], moduleName?: string): string;
     function createLanguageServiceSourceFile(fileName: string, scriptSnapshot: IScriptSnapshot, scriptTarget: ScriptTarget, version: string, setNodeParents: boolean): SourceFile;
     let disableIncrementalParsing: boolean;
     function updateLanguageServiceSourceFile(sourceFile: SourceFile, scriptSnapshot: IScriptSnapshot, version: string, textChangeRange: TextChangeRange, aggressiveChecks?: boolean): SourceFile;
-    function createDocumentRegistry(): DocumentRegistry;
+    function createDocumentRegistry(useCaseSensitiveFileNames?: boolean): DocumentRegistry;
     function preProcessFile(sourceText: string, readImportFiles?: boolean): PreProcessedFileInfo;
     function createLanguageService(host: LanguageServiceHost, documentRegistry?: DocumentRegistry): LanguageService;
     function createClassifier(): Classifier;

@@ -534,6 +534,7 @@ var handler = function (compileStep) {
 			'--target ES5 ' +
 			'--sourcemap ' +
 			'--module amd ' +
+			'--experimentalDecorators ' +
 			'--emitDecoratorMetadata ' +
 			'--emitVerboseMetadata ' +
 			'--skipEmitVarForModule ' +
