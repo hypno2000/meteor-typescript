@@ -1,15 +1,18 @@
 ﻿Package.describe({
-	summary: "Javascript with types"
+	summary: "Javascript with Types",
+	version: "1.0.0"
 });
 
-Package._transitional_registerBuildPlugin({
+Package.registerBuildPlugin({
 	name: "compileTypescript",
-	use: [],
-	sources: [
-	  'plugin/compile-typescript.js'
-	],
+	use: ['caching-compiler', 'ecmascript'],
+	sources: ['plugin/compile-typescript.js'],
 	npmDependencies: {
 		"mkdirp": "0.3.5",
-		"source-map": "0.1.24"
+   	"source-map": "0.4.2"
 	}
+});
+
+Package.onUse(function (api) {
+	api.use('isobuild:compiler-plugin@1.0.0');
 });

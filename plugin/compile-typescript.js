@@ -61,7 +61,8 @@ function initDirs() {
 function initAppRefs(curPath) {
 	if (!curPath) {
 		curPath = '.';
-	}1
+	}
+	1
 	var addDir;
 	fs.readdirSync(curPath).forEach(function (item) {
 		if (item.charAt(0) === '.') {
@@ -150,7 +151,7 @@ function getPackages() {
 		onTest: function (callback) {
 			callback(api);
 		},
-		registerBuildPlugin: function() {
+		registerBuildPlugin: function () {
 		}
 	};
 	Npm.depends = function () {
@@ -165,6 +166,8 @@ function getPackages() {
 		add_files: function () {
 		},
 		addFiles: function () {
+		},
+		addAssets: function () {
 		},
 		imply: function () {
 		},
@@ -450,233 +453,239 @@ function generatePackageRefs() {
 
 }
 
-var handler = function (compileStep) {
-	//console.log('COMPILING: ' + compileStep._fullInputPath);
+Plugin.registerCompiler({
+	extensions: ['ts']
+}, () => new TypescriptCompiler());
 
-	generatePackageRefs();
-	var fullPath = compileStep._fullInputPath;
-	var inputPath = '/' + compileStep.inputPath;
+class TypescriptCompiler extends CachingCompiler {
 
-	//	console.log("Src: " + fullPath);
-	var isRef = fullPath.substring(fullPath.length - 5) === '.d.ts';
-
-	// cache check
-	//console.log(inputPath);
-	var cachePath = path.join(cacheDir, isApp ? path.relative('../', fullPath) : path.relative('./', fullPath));
-	var baseName = path.basename(fullPath, '.ts');
-	var changeTime = fs.statSync(fullPath).mtime;
-	var jsPath = path.join(path.dirname(cachePath), baseName + '.js');
-//	var mapPath = jsPath + '.map';
-	var error;
-
-	// references
-	var dir = path.dirname(path.relative('./', fullPath));
-	if (compileStep.packageName) {
-//		var packagePath = path.join(packagesPath, compileStep.packageName);
-//		fs.writeFileSync(path.join(dir, '.server.d.ts'),
-//			'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-server.d.ts')) + '" />\n' +
-//			'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-server.d.ts')) + '" />\n'
-//		);
-//		fs.writeFileSync(path.join(dir, '.client.d.ts'),
-//			'///<reference path="' + path.relative(dir, path.join(packagePath, '.uses-client.d.ts')) + '" />\n' +
-//			'///<reference path="' + path.relative(dir, path.join(packagePath, '.files-client.d.ts')) + '" />\n'
-//		);
-	}
-	else {
-		if (appDirs.indexOf(dir) == -1) {
-			appDirs.push(dir);
-		}
-		if (appRefs.indexOf(compileStep.inputPath) == -1) {
-			appRefs.push(compileStep.inputPath);
-			appDirs.forEach(function (dir) {
-				fs.writeFileSync(path.join(dir, '.ts', "server.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.ts', 'app-server.d.ts')) + '" />\n');
-				fs.writeFileSync(path.join(dir, '.ts', "client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.ts', 'app-client.d.ts')) + '" />\n');
-			});
-			fs.writeFileSync(path.join('.meteor', '.ts', 'app-server.d.ts'), getAppRefs('server'));
-			fs.writeFileSync(path.join('.meteor', '.ts', 'app-client.d.ts'), getAppRefs('client'));
-		}
+	constructor() {
+		super({
+			compilerName: 'coffeescript',
+			defaultCacheSize: 1024 * 1024 * 100,
+		});
 	}
 
-	// dont compile d.ts files
-	if (isRef) {
-		return;
-	}
-
-	if (!fs.existsSync(cacheDir)) {
-		mkdirp.sync(cacheDir);
-	}
-
-//	console.log('TS cache exists: ' + jsPath + ' ' + fs.existsSync(jsPath));
-	if (!fs.existsSync(jsPath) || changeTime.getTime() > fs.statSync(jsPath).mtime.getTime()) {
-
-//		var execSync = Npm.require('exec-sync');
-		//var execSync = Npm.require('execSync');
-		var exec = Npm.require('child_process').exec;
-		var Future = Npm.require('fibers/future');
-
-		function execSync(command) {
-			var fut = new Future();
-			exec(command, function (error, stdout, stderr) {
-				fut.return({
-					stdout: stdout,
-					stderr: stderr || error
-				})
-			});
-			return fut.wait();
+	// Your subclass must override this method to define the transformation from
+	// InputFile to its cacheable CompileResult).
+	//
+	// Given an InputFile (the data type passed to processFilesForTarget as part
+	// of the Plugin.registerCompiler API), compiles the file and returns a
+	// CompileResult (the cacheable data type specific to your subclass).
+	//
+	// This method is not called on files when a valid cache entry exists in
+	// memory or on disk.
+	//
+	// On a compile error, you should call `inputFile.error` appropriately and
+	// return null; this will not be cached.
+	//
+	// This method should not call `inputFile.addJavaScript` and similar files!
+	// That's what addCompileResult is for.
+	compileOneFile(inputFile) {
+		var pathInPackage = inputFile.getPathInPackage();
+		var packageName = inputFile.getPackageName();
+		var fullPath = pathInPackage;
+		if (packageName) {
+			fullPath = path.join(packagesPath, packageName, fullPath);
+		}
+		if (pathInPackage.substr(-5) === '.d.ts') {
+			return null;
 		}
 
-		var ERROR = "\nTypeScript compilation failed!\n";
-		ERROR = ERROR + (new Array(ERROR.length - 1).join("-")) + "\n";
-		//		var compileCommand = 'tsc --nolib --sourcemap --out ' + cacheDir + " " + fullPath; // add client,server module type switch?
-//		var compileCommand = 'tsc --target ES5 --sourcemap --outDir ' + cacheDir + ' ' + fullPath;
-//		var compileCommand = 'tsc --target ES5 --outDir ' + cacheDir + ' ' + fullPath;
-		var compileCommand = 'node ' + compilerPath + ' ' +
-			'--target ES5 ' +
-			'--sourcemap ' +
-			'--module amd ' +
-			'--experimentalDecorators ' +
-			'--emitDecoratorMetadata ' +
-			'--emitVerboseMetadata ' +
-			'--skipEmitVarForModule ' +
-			'--outDir ' + cacheDir + ' ' +
-			allPath;
-		//var compileCommand = 'tsc '+
-		//	'--target ES5 ' +
-		//	'--sourcemap ' +
-		//	'--module amd ' +
-		//	'--outDir ' + cacheDir + ' ' +
-		//	allPath;
-		//console.log('Compiling TypeScript...');
-//		console.log('Compiling TypeScript... (triggered by ' + path.relative('../', fullPath) + ')');
-//		console.log(compileCommand);
-		try {
-			var result = execSync(compileCommand);
-		}
-		catch (e) {
-			console.log('ERROR');
-			console.log(e);
-		}
-		//console.log(result)
+		generatePackageRefs();
 
-		if (result.stderr) {
+		//	console.log("Src: " + fullPath);
+		var isRef = fullPath.substring(fullPath.length - 5) === '.d.ts';
 
-			var lines = (typeof result.stderr === 'string' ? result.stderr : result.stdout).split('\n');
-			var errors = [];
-			for (var i = 0; i < lines.length; i++) {
-				if (!lines[i]) {
-					continue;
+		// cache check
+		//console.log(inputPath);
+		var cachePath = path.join(cacheDir, isApp ? path.relative('../', fullPath) : path.relative('./', fullPath));
+		var baseName = path.basename(fullPath, '.ts');
+		var changeTime = fs.statSync(fullPath).mtime;
+		var jsPath = path.join(path.dirname(cachePath), baseName + '.js');
+		//	var mapPath = jsPath + '.map';
+		var error;
+
+		// references
+		var dir = path.dirname(path.relative('./', fullPath));
+		if (!packageName) {
+			if (appDirs.indexOf(dir) == -1) {
+				appDirs.push(dir);
+			}
+			if (appRefs.indexOf(pathInPackage) == -1) {
+				appRefs.push(pathInPackage);
+				appDirs.forEach(function (dir) {
+					fs.writeFileSync(path.join(dir, '.ts', "server.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.ts', 'app-server.d.ts')) + '" />\n');
+					fs.writeFileSync(path.join(dir, '.ts', "client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.ts', 'app-client.d.ts')) + '" />\n');
+				});
+				fs.writeFileSync(path.join('.meteor', '.ts', 'app-server.d.ts'), getAppRefs('server'));
+				fs.writeFileSync(path.join('.meteor', '.ts', 'app-client.d.ts'), getAppRefs('client'));
+			}
+		}
+
+		// dont compile d.ts files
+		if (isRef) {
+			return;
+		}
+
+		if (!fs.existsSync(cacheDir)) {
+			mkdirp.sync(cacheDir);
+		}
+
+		if (!fs.existsSync(jsPath) || changeTime.getTime() > fs.statSync(jsPath).mtime.getTime()) {
+
+			var exec = Npm.require('child_process').exec;
+			var Future = Npm.require('fibers/future');
+
+			function execSync(command) {
+				var fut = new Future();
+				exec(command, function (error, stdout, stderr) {
+					fut.return({
+						stdout: stdout,
+						stderr: stderr || error
+					})
+				});
+				return fut.wait();
+			}
+
+			var compileCommand = 'node ' + compilerPath + ' ' +
+				'--target ES5 ' +
+				'--sourcemap ' +
+				'--module amd ' +
+				'--experimentalDecorators ' +
+				'--emitDecoratorMetadata ' +
+				'--emitVerboseMetadata ' +
+				'--skipEmitVarForModule ' +
+				'--outDir ' + cacheDir + ' ' +
+				allPath;
+			try {
+				var result = execSync(compileCommand);
+			}
+			catch (e) {
+				console.log(e);
+			}
+			//console.log(result)
+
+			if (result.stderr) {
+				var lines = (typeof result.stderr === 'string' ? result.stderr : result.stdout).split('\n');
+				var errors = [];
+				for (var i = 0; i < lines.length; i++) {
+					if (!lines[i]) {
+						continue;
+					}
+					errors.push(lines[i]);
 				}
-//				if (
-				//					lines[i].trim() &&
-				// !/The property '__super__' does not exist on value of type/.test(lines[i]) &&
-				//					lines[i].substr(-36) !== 'Base type must be interface or class' &&
-				//					lines[i].substr(-30) !== 'not exist in the current scope' &&
-				//									lines[i].substr(-24) !== 'lacks an implementation.'
-				//				lines[i].indexOf('error TS2095') == -1
-//									lines[i].indexOf('error TS2000') == -1  && // Duplicate identifier
-//									lines[i].indexOf('error TS2094') == -1 // The property does not exist on value of type
-//				) {
-				errors.push(lines[i]);
-//				}
+				if (errors.length > 0) {
+					error = errors.join('\n');
+				}
 			}
-			if (errors.length > 0) {
-				error = ERROR + errors.join('\n');
+			if (!error && !fs.existsSync(jsPath)) {
+				error = 'File was not created';
 			}
-		}
-		if (fs.existsSync(jsPath)) {
-			//var sourceBuffer = new Buffer(fs.readFileSync(fullPath));
-//			var compiledBuffer = new Buffer(
-//				fs.readFileSync(jsPath).toString().replace(
-//					/\/\/@ sourceMappingURL=[0-9a-zA-Z_.-]+/,
-//					'//@ sourceMappingURL=' + inputPath + '.map?' + changeTime.getTime()
-//				)
-//			);
-//			var mapBuffer = new Buffer(
-//				fs.readFileSync(mapPath).toString().replace(
-//					/"sources":\["[0-9a-zA-Z-\/\.-]+"]/,
-//					'"sources":["' + path.dirname(inputPath) + '/' + path.basename(inputPath) + '?' + changeTime.getTime() + '"]'
-//				)
-//			);
 			if (error) {
 				try {
 					fs.unlinkSync(jsPath);
 					fs.unlinkSync(cachePath + '.map');
-//					fs.unlinkSync(cachePath);
-//					fs.unlinkSync(cachePath + '.js');
-					//fs.unlinkSync(mapPath);
 				}
 				catch (e) {
 					// ignore
 				}
-				throw new Error(error);
-			}
-//			fs.writeFileSync(cachePath, sourceBuffer);
-//			fs.writeFileSync(cachePath + '.js', compiledBuffer);
-//			fs.writeFileSync(cachePath + '.map', mapBuffer);
-
-//			fs.unlinkSync(jsPath);
-//			fs.unlinkSync(mapPath);
-
-		}
-		else {
-			try {
-				fs.unlinkSync(jsPath);
-				fs.unlinkSync(cachePath + '.map');
-//				fs.unlinkSync(cachePath);
-//				fs.unlinkSync(cachePath + '.js');
-			}
-			catch (e) {
-				// ignore
-			}
-			if (error) {
-				console.log(error);
-				throw new Error("Compilation error, aborting.");
-			}
-			else {
-				throw new Error(ERROR + 'file was not created: \n' + compileStep.inputPath + '\n' + jsPath + '\n' + inputPath + '\n' + cacheDir + '\n' + fullPath);
+				// ../meteor/packages/marketing/TransactionServer.ts(1078,10)
+				error = error.replace(/(\.\.\/meteor\/)?([a-zA-Z0-9\.\/_-]+)\(([0-9]+),([0-9]+)\)/, '$2:$3:$4');
+				inputFile.error({
+					message: error
+				});
+				return null;
 			}
 		}
+		var data = fs.readFileSync(jsPath).toString();
 
-	}
-	var data = fs.readFileSync(jsPath).toString();
-
-	//console.log('adding: ' + jsPath)
-	// couple of hacks for meteor namespacing
-	var prep = '';
-	data = data
+		//console.log('adding: ' + jsPath)
+		// couple of hacks for meteor namespacing
+		var prep = '';
+		data = data
 		//.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1' + prep)
-		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n(\/\*(.|\n)+\*\/\n)?)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
-		//.replace(/(var __decorate[\w\s!="\(\)&|,.;:}{]*};\n)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
-		.replace(/^\s*var ([a-zA-Z0-9_]+);/, prep)
-		.replace(/\/\/# sourceMappingURL=.+/, '');
-//		.replace(/\}\)\(([a-zA-Z0-9_]+) \|\| \(([a-zA-Z0-9_]+) = \{\}\)\);(\n\/\/# sourceMappingURL)/, '})($1);$3');
-//	data = data
-//		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
-//		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
-//		.replace(/^\s*var ([a-zA-Z0-9_]+);/, 'this.$1 = this.$1 || {};\nvar $1 = this.$1;');
+			.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n(\/\*(.|\n)+\*\/\n)?)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
+			//.replace(/(var __decorate[\w\s!="\(\)&|,.;:}{]*};\n)var ([a-zA-Z0-9_]+);\n/, '$1' + prep)
+			.replace(/^\s*var ([a-zA-Z0-9_]+);/, prep)
+			.replace(/\/\/# sourceMappingURL=.+/, '');
+		//		.replace(/\}\)\(([a-zA-Z0-9_]+) \|\| \(([a-zA-Z0-9_]+) = \{\}\)\);(\n\/\/# sourceMappingURL)/, '})($1);$3');
+		//	data = data
+		//		.replace(/(new __\(\);\n\};\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
+		//		.replace(/(<reference path="[a-zA-Z0-9_\.\/-]+"[ ]*\/>\n)var ([a-zA-Z0-9_]+);/, '$1this.$2 = this.$2 || {};\nvar $2 = this.$2;')
+		//		.replace(/^\s*var ([a-zA-Z0-9_]+);/, 'this.$1 = this.$1 || {};\nvar $1 = this.$1;');
 
-	var map = fs.readFileSync(jsPath + '.map')
-		.toString()
-		.replace(/"sources":\["[0-9a-zA-Z-\/\.-]+"]/, '"sources":["' + compileStep.pathForSourceMap + '"]');
-	map = map.substr(0, map.length - 1) + ',"sourcesContent":["' +  fs.readFileSync(fullPath)
-		.toString()
-		.replace(/[\\]/g, '\\\\')
-		.replace(/["]/g, '\\"')
-		.replace(/[\b]/g, '\\b')
-		.replace(/[\f]/g, '\\f')
-		.replace(/[\n]/g, '\\n')
-		.replace(/[\r]/g, '\\r')
-		.replace(/[\t]/g, '\\t') + '"]}';
-	compileStep.addJavaScript({
-		path: compileStep.inputPath + ".js",
-		sourcePath: compileStep.inputPath,
-		data: data,
-		sourceMap: map,
-		bare: compileStep.fileOptions.bare
-	});
-};
+		var map = fs.readFileSync(jsPath + '.map')
+			.toString()
+			.replace(/"sources":\["[0-9a-zA-Z-\/\.-]+"]/, '"sources":["' + inputFile.getDisplayPath() + '"]');
+		map = map.substr(0, map.length - 1) + ',"sourcesContent":["' + fs.readFileSync(fullPath)
+				.toString()
+				.replace(/[\\]/g, '\\\\')
+				.replace(/["]/g, '\\"')
+				.replace(/[\b]/g, '\\b')
+				.replace(/[\f]/g, '\\f')
+				.replace(/[\n]/g, '\\n')
+				.replace(/[\r]/g, '\\r')
+				.replace(/[\t]/g, '\\t') + '"]}';
+		return {
+			path: pathInPackage + ".js",
+			data: data,
+			sourceMap: map
+		};
+	}
 
-Plugin.registerSourceHandler("ts", handler);
+	// Your subclass must override this method to define the key used to identify
+	// a particular version of an InputFile.
+	//
+	// Given an InputFile (the data type passed to processFilesForTarget as part
+	// of the Plugin.registerCompiler API), returns a cache key that represents
+	// it. This cache key can be any JSON value (it will be converted internally
+	// into a hash).  This should reflect any aspect of the InputFile that affects
+	// the output of `compileOneFile`. Typically you'll want to include
+	// `inputFile.getDeclaredExports()`, and perhaps
+	// `inputFile.getPathInPackage()` or `inputFile.getDeclaredExports` if
+	// `compileOneFile` pays attention to them.
+	//
+	// Note that for MultiFileCachingCompiler, your cache key doesn't need to
+	// include the file's path, because that is automatically taken into account
+	// by the implementation. CachingCompiler subclasses can choose whether or not
+	// to include the file's path in the cache key.
+	getCacheKey(inputFile) {
+		var pathInPackage = inputFile.getPathInPackage();
+		var packageName = inputFile.getPackageName();
+		var fullPath = pathInPackage;
+		if (packageName) {
+			fullPath = path.join(packagesPath, packageName, fullPath);
+		}
+		if (pathInPackage.substr(-5) === '.d.ts') {
+			return null;
+		}
+		return fullPath + fs.statSync(fullPath).mtime;
+	}
 
-//sources":["ejson-models/lib/classes.coffee
-//sources":["../../../../packages/banking/client.ts"]
+	// Your subclass must override this method to define how a CompileResult
+	// translates into adding assets to the bundle.
+	//
+	// This method is given an InputFile (the data type passed to
+	// processFilesForTarget as part of the Plugin.registerCompiler API) and a
+	// CompileResult (either returned directly from compileOneFile or read from
+	// the cache).  It should call methods like `inputFile.addJavaScript`
+	// and `inputFile.error`.
+	addCompileResult(inputFile, compileResult) {
+		inputFile.addJavaScript({
+			path: compileResult.path,
+			sourcePath: inputFile.getPathInPackage(),
+			data: compileResult.data,
+			sourceMap: compileResult.sourceMap,
+			bare: inputFile.getFileOptions().bare
+		});
+	}
+
+	// Your subclass must override this method to define the size of a
+	// CompilerResult (used by the in-memory cache to limit the total amount of
+	// data cached).
+	compileResultSize(compileResult) {
+		return compileResult.data.length + compileResult.sourceMap.length
+	}
+
+}
