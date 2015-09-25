@@ -483,7 +483,10 @@ class TypescriptCompiler extends CachingCompiler {
 	// That's what addCompileResult is for.
 	compileOneFile(inputFile) {
 		var pathInPackage = inputFile.getPathInPackage();
-		var packageName = inputFile.getPackageName().replace('local-test:', '');
+		var packageName = inputFile.getPackageName();
+		if (packageName) {
+			packageName = packageName.replace('local-test:', '');
+		}
 		var fullPath = pathInPackage;
 		if (packageName) {
 			fullPath = path.join(packagesPath, packageName, fullPath);
