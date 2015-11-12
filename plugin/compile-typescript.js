@@ -174,6 +174,8 @@ function getPackages() {
 		use: function () {
 		},
 		export: function () {
+		},
+		versionsFrom: function() {
 		}
 	}
 
