@@ -9,16 +9,16 @@ var appPath = fs.existsSync('.meteor') ? '.meteor' : '../.meteor';
 var isApp = fs.existsSync(path.join(appPath, 'release'));
 var packagesPath = path.join(meteorPath, 'packages');
 var cacheDir = path.join(meteorPath, '.cache');
-var allServerPath = path.join('.meteor', '.ts', 'all-server.d.ts');
-var allClientPath = path.join('.meteor', '.ts', 'all-client.d.ts');
-var allPath = path.join('.meteor', '.ts', 'all.ts');
-var dummyPath = path.join('.meteor', '.ts', 'dummy.ts');
+var allServerPath = path.join('.meteor', '.#ts', 'all-server.d.ts');
+var allClientPath = path.join('.meteor', '.#ts', 'all-client.d.ts');
+var allPath = path.join('.meteor', '.#ts', 'all.ts');
+var dummyPath = path.join('.meteor', '.#ts', 'dummy.ts');
 var compilerPath = path.join(packagesPath, 'typescript', 'lib', 'typescript', 'tsc.js');
 
 var typescriptPackages = getTypescriptPackages();
 
-if (!fs.existsSync(path.join('.meteor', '.ts'))) {
-	mkdirp.sync(path.join('.meteor', '.ts'));
+if (!fs.existsSync(path.join('.meteor', '.#ts'))) {
+	mkdirp.sync(path.join('.meteor', '.#ts'));
 }
 
 initDirs();
@@ -62,7 +62,6 @@ function initAppRefs(curPath) {
 	if (!curPath) {
 		curPath = '.';
 	}
-	1
 	var addDir;
 	fs.readdirSync(curPath).forEach(function (item) {
 		if (item.charAt(0) === '.') {
@@ -84,15 +83,15 @@ function initAppRefs(curPath) {
 
 	if (curPath === '.') {
 		appDirs.forEach(function (dir) {
-			dir = path.join(dir, '.ts');
+			dir = path.join(dir, '.#ts');
 			if (!fs.existsSync(dir)) {
 				mkdirp.sync(dir);
 			}
-			fs.writeFileSync(path.join(dir, "server.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.ts', 'app-server.d.ts')) + '" />\n');
-			fs.writeFileSync(path.join(dir, "client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.ts', 'app-client.d.ts')) + '" />\n');
+			fs.writeFileSync(path.join(dir, "server.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.#ts', 'app-server.d.ts')) + '" />\n');
+			fs.writeFileSync(path.join(dir, "client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.#ts', 'app-client.d.ts')) + '" />\n');
 		});
-		fs.writeFileSync(path.join('.meteor', '.ts', 'app-server.d.ts'), getAppRefs('server'));
-		fs.writeFileSync(path.join('.meteor', '.ts', 'app-client.d.ts'), getAppRefs('client'));
+		fs.writeFileSync(path.join('.meteor', '.#ts', 'app-server.d.ts'), getAppRefs('server'));
+		fs.writeFileSync(path.join('.meteor', '.#ts', 'app-client.d.ts'), getAppRefs('client'));
 	}
 
 }
@@ -108,19 +107,19 @@ function getAppRefs(side) {
 		if (fs.existsSync(path.join('packages', entry))) {
 			packagePath = path.join(path.join('packages', entry));
 		}
-		packagePath = path.join(packagePath, '.ts');
+		packagePath = path.join(packagePath, '.#ts');
 		if (!fs.existsSync(packagePath)) {
 			mkdirp.sync(packagePath);
 		}
-		res += '///<reference path="' + path.relative(path.join('.meteor', '.ts'), path.join(packagePath, 'implies-' + side + '.d.ts')) + '" />\n';
-		res += '///<reference path="' + path.relative(path.join('.meteor', '.ts'), path.join(packagePath, 'files-' + side + '.d.ts')) + '" />\n';
+		res += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), path.join(packagePath, 'implies-' + side + '.d.ts')) + '" />\n';
+		res += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), path.join(packagePath, 'files-' + side + '.d.ts')) + '" />\n';
 	});
 	appRefs.forEach(function (entry) {
 		if (
 			side === 'client' && entry.substr(0, 'server'.length + 1) !== 'server/' ||
 			side === 'server' && entry.substr(0, 'client'.length + 1) !== 'client/'
 		) {
-			res += '///<reference path="' + path.relative(path.join('.meteor', '.ts'), entry) + '" />\n';
+			res += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), entry) + '" />\n';
 		}
 	});
 //	res += '///<reference path="' + path.relative('.meteor', '.dummy.ts') + '" />\n';
@@ -260,7 +259,9 @@ function getPackages() {
 					name = [name];
 				}
 				var items = name.filter(function (item) {
-					return item.substr(item.length - 3) === '.ts';
+					if (item) {
+						return item.substr(item.length - 3) === '.ts';
+					}
 				});
 				if (inServer) {
 					packages[package].server.files = packages[package].server.files.concat(items);
@@ -386,7 +387,7 @@ function generatePackageRefs() {
 	var allServerRefs = '';
 	var allClientRefs = '';
 	for (var i in packages) {
-		var packagePath = path.join(packages[i].path, '.ts');
+		var packagePath = path.join(packages[i].path, '.#ts');
 		if (!fs.existsSync(packagePath)) {
 			mkdirp.sync(packagePath);
 		}
@@ -406,7 +407,7 @@ function generatePackageRefs() {
 				refs += '///<reference path="../' + package.files[j] + '" />\n';
 
 				// shortcuts
-				dir = path.join(packages[i].path, path.dirname(package.files[j]), '.ts');
+				dir = path.join(packages[i].path, path.dirname(package.files[j]), '.#ts');
 				if (!fs.existsSync(dir)) {
 					mkdirp.sync(dir);
 				}
@@ -427,31 +428,31 @@ function generatePackageRefs() {
 			// uses
 			refs = '';
 			for (j in package.uses) {
-				refs += '///<reference path="' + path.relative(packagePath, path.join(package.uses[j].path, '.ts', 'implies-' + side + '.d.ts')) + '" />\n';
-				refs += '///<reference path="' + path.relative(packagePath, path.join(package.uses[j].path, '.ts', 'files-' + side + '.d.ts')) + '" />\n';
+				refs += '///<reference path="' + path.relative(packagePath, path.join(package.uses[j].path, '.#ts', 'implies-' + side + '.d.ts')) + '" />\n';
+				refs += '///<reference path="' + path.relative(packagePath, path.join(package.uses[j].path, '.#ts', 'files-' + side + '.d.ts')) + '" />\n';
 			}
 			fs.writeFileSync(usesPath, refs);
 
 			// implies
 			refs = '';
 			for (j in package.imply) {
-				refs += '///<reference path="' + path.relative(packagePath, path.join(package.imply[j].path, '.ts', 'implies-' + side + '.d.ts')) + '" />\n'
-				refs += '///<reference path="' + path.relative(packagePath, path.join(package.imply[j].path, '.ts', 'files-' + side + '.d.ts')) + '" />\n'
+				refs += '///<reference path="' + path.relative(packagePath, path.join(package.imply[j].path, '.#ts', 'implies-' + side + '.d.ts')) + '" />\n'
+				refs += '///<reference path="' + path.relative(packagePath, path.join(package.imply[j].path, '.#ts', 'files-' + side + '.d.ts')) + '" />\n'
 			}
 			fs.writeFileSync(impliesPath, refs);
 
 			if (side == 'server') {
-				allServerRefs += '///<reference path="' + path.relative(path.join('.meteor', '.ts'), filesPath) + '" />\n';
+				allServerRefs += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), filesPath) + '" />\n';
 			}
 			else if (side == 'client') {
-				allClientRefs += '///<reference path="' + path.relative(path.join('.meteor', '.ts'), filesPath) + '" />\n';
+				allClientRefs += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), filesPath) + '" />\n';
 			}
 
 		}
 	}
 
-	fs.writeFileSync(path.join('.meteor', '.ts', 'packages-server.d.ts'), allServerRefs);
-	fs.writeFileSync(path.join('.meteor', '.ts', 'packages-client.d.ts'), allClientRefs);
+	fs.writeFileSync(path.join('.meteor', '.#ts', 'packages-server.d.ts'), allServerRefs);
+	fs.writeFileSync(path.join('.meteor', '.#ts', 'packages-client.d.ts'), allClientRefs);
 
 }
 
@@ -520,11 +521,11 @@ class TypescriptCompiler extends CachingCompiler {
 			if (appRefs.indexOf(pathInPackage) == -1) {
 				appRefs.push(pathInPackage);
 				appDirs.forEach(function (dir) {
-					fs.writeFileSync(path.join(dir, '.ts', "server.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.ts', 'app-server.d.ts')) + '" />\n');
-					fs.writeFileSync(path.join(dir, '.ts', "client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.ts', 'app-client.d.ts')) + '" />\n');
+					fs.writeFileSync(path.join(dir, '.#ts', "server.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.#ts', 'app-server.d.ts')) + '" />\n');
+					fs.writeFileSync(path.join(dir, '.#ts', "client.d.ts"), '///<reference path="' + path.relative(dir, path.join('.meteor', '.#ts', 'app-client.d.ts')) + '" />\n');
 				});
-				fs.writeFileSync(path.join('.meteor', '.ts', 'app-server.d.ts'), getAppRefs('server'));
-				fs.writeFileSync(path.join('.meteor', '.ts', 'app-client.d.ts'), getAppRefs('client'));
+				fs.writeFileSync(path.join('.meteor', '.#ts', 'app-server.d.ts'), getAppRefs('server'));
+				fs.writeFileSync(path.join('.meteor', '.#ts', 'app-client.d.ts'), getAppRefs('client'));
 			}
 		}
 
