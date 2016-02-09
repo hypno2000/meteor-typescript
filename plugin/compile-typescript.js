@@ -560,6 +560,7 @@ class TypescriptCompiler extends CachingCompiler {
 				'--module amd ' +
 				'--experimentalDecorators ' +
 				'--emitDecoratorMetadata ' +
+				//'--pretty ' +
 				'--emitVerboseMetadata ' +
 				'--skipEmitVarForModule ' +
 				'--outDir ' + cacheDir + ' ' +
@@ -597,7 +598,9 @@ class TypescriptCompiler extends CachingCompiler {
 					// ignore
 				}
 				// ../meteor/packages/marketing/TransactionServer.ts(1078,10)
-				error = error.replace(/(\.\.\/meteor\/)?([a-zA-Z0-9\.\/_-]+)\(([0-9]+),([0-9]+)\)/, '$2:$3:$4');
+				error = error
+					.replace(/(\x1b\[30m)/g, '\n$1')
+					.replace(/([a-zA-Z0-9\.\/_-]+)\(([0-9]+),([0-9]+)\)/g, '\n\x1b[44m' + process.cwd().replace(new RegExp('^/Users/' + process.env.USER, 'g'), '~') + '/$1:$2 $3\x1b[0m');
 				inputFile.error({
 					message: error
 				});
