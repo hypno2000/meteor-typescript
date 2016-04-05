@@ -175,6 +175,8 @@ function getPackages() {
 		export: function () {
 		},
 		versionsFrom: function() {
+		},
+		mainModule: function() {
 		}
 	}
 
