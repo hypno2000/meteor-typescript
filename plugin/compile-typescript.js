@@ -26,6 +26,10 @@ initAppRefs();
 
 function initDirs() {
 
+	if (fs.existsSync('tsconfig.json')) {
+		return;
+	}
+
 	// compiled js and sourcemaps will be cached here
 	if (!fs.existsSync(cacheDir)) {
 		mkdirp.sync(cacheDir);
