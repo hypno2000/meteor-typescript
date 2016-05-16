@@ -15,6 +15,8 @@ var allPath = path.join('.meteor', '.#ts', 'all.ts');
 var dummyPath = path.join('.meteor', '.#ts', 'dummy.ts');
 var compilerPath = path.join(packagesPath, 'typescript', 'lib', 'typescript', 'tsc.js');
 
+var disableAppRefs = fs.existsSync('tsconfig.json');
+
 var typescriptPackages = getTypescriptPackages();
 
 if (!fs.existsSync(path.join('.meteor', '.#ts'))) {
@@ -26,7 +28,7 @@ initAppRefs();
 
 function initDirs() {
 
-	if (fs.existsSync('tsconfig.json')) {
+	if (disableAppRefs) {
 		return;
 	}
 
@@ -66,7 +68,7 @@ function initAppRefs(curPath) {
 	if (!curPath) {
 		curPath = '.';
 	}
-	if (curPath === '.' && fs.existsSync('tsconfig.json')) {
+	if (disableAppRefs) {
 		return;
 	}
 	var addDir;
@@ -572,8 +574,11 @@ class TypescriptCompiler extends CachingCompiler {
 				//'--pretty ' +
 				'--emitVerboseMetadata ' +
 				'--skipEmitVarForModule ' +
-				'--outDir ' + cacheDir + ' ' +
-				allPath;
+				'--outDir ' + cacheDir
+
+			if (!disableAppRefs) {
+				compileCommand += ' ' + allPath;
+			}
 			try {
 				var result = execSync(compileCommand);
 			}
