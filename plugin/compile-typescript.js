@@ -28,10 +28,6 @@ initAppRefs();
 
 function initDirs() {
 
-	if (disableAppRefs) {
-		return;
-	}
-
 	// compiled js and sourcemaps will be cached here
 	if (!fs.existsSync(cacheDir)) {
 		mkdirp.sync(cacheDir);
@@ -44,22 +40,22 @@ function initDirs() {
 	if (!fs.existsSync(allServerPath)) {
 		fs.writeFileSync(allServerPath,
 			'///<reference path="packages-server.d.ts" />\n' +
-			'///<reference path="app-server.d.ts" />\n'
+			(disableAppRefs ? '' : '///<reference path="app-server.d.ts" />\n')
 		);
 	}
 
 	if (!fs.existsSync(allClientPath)) {
 		fs.writeFileSync(allClientPath,
 			'///<reference path="packages-client.d.ts" />\n' +
-			'///<reference path="app-client.d.ts" />\n'
+			(disableAppRefs ? '' : '///<reference path="app-client.d.ts" />\n')
 		);
 	}
 
 	if (!fs.existsSync(allPath)) {
 		fs.writeFileSync(allPath,
 			'///<reference path="dummy.ts" />\n' +
-			'///<reference path="all-server.d.ts" />\n' +
-			'///<reference path="all-client.d.ts" />\n'
+			(disableAppRefs ? '' : '///<reference path="all-server.d.ts" />\n') +
+			(disableAppRefs ? '' : '///<reference path="all-client.d.ts" />\n')
 		);
 	}
 }
@@ -574,11 +570,11 @@ class TypescriptCompiler extends CachingCompiler {
 				//'--pretty ' +
 				'--emitVerboseMetadata ' +
 				'--skipEmitVarForModule ' +
-				'--outDir ' + cacheDir
+				'--outDir ' + cacheDir;
 
-			if (!disableAppRefs) {
+			// if (!disableAppRefs) {
 				compileCommand += ' ' + allPath;
-			}
+			// }
 			try {
 				var result = execSync(compileCommand);
 			}
