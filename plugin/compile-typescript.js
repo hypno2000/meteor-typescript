@@ -62,6 +62,9 @@ function initAppRefs(curPath) {
 	if (!curPath) {
 		curPath = '.';
 	}
+	if (curPath === '.' && fs.fileExistsSync('tsconfig.json')) {
+		return;
+	}
 	var addDir;
 	fs.readdirSync(curPath).forEach(function (item) {
 		if (item.charAt(0) === '.') {
