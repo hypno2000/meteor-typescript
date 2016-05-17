@@ -2,6 +2,8 @@ var fs = Npm.require('fs');
 var path = Npm.require('path');
 var mkdirp = Npm.require('mkdirp');
 
+var disableInApp = fs.existsSync('tsconfig.json');
+
 var appRefs = [];
 var appDirs = [];
 var meteorPath = fs.existsSync(path.join('..', 'meteor')) ? path.join('..', 'meteor') : path.join('..', '..', 'meteor');
@@ -13,6 +15,10 @@ var allServerPath = path.join('.meteor', '.#ts', 'all-server.d.ts');
 var allClientPath = path.join('.meteor', '.#ts', 'all-client.d.ts');
 var allPath = path.join('.meteor', '.#ts', 'all.ts');
 var dummyPath = path.join('.meteor', '.#ts', 'dummy.ts');
+var meteorAllServerPath = path.join(meteorPath, '.meteor', '.#ts', 'all-server.d.ts');
+var meteorAllClientPath = path.join(meteorPath, '.meteor', '.#ts', 'all-client.d.ts');
+var meteorAllPath = path.join(meteorPath, '.meteor', '.#ts', 'all.ts');
+var meteorDummyPath = path.join(meteorPath, '.meteor', '.#ts', 'dummy.ts');
 var compilerPath = path.join(packagesPath, 'typescript', 'lib', 'typescript', 'tsc.js');
 
 if (isApp) {
@@ -30,12 +36,15 @@ if (isApp) {
 		});
 }
 
-var disableAppRefs = fs.existsSync('tsconfig.json');
-
 var typescriptPackages = getTypescriptPackages();
 
 if (!fs.existsSync(path.join('.meteor', '.#ts'))) {
 	mkdirp.sync(path.join('.meteor', '.#ts'));
+}
+if (disableInApp) {
+	if (!fs.existsSync(path.join(meteorPath, '.meteor', '.#ts'))) {
+		mkdirp.sync(path.join(meteorPath, '.meteor', '.#ts'));
+	}
 }
 
 initDirs();
@@ -56,31 +65,58 @@ function initDirs() {
 	if (!fs.existsSync(allServerPath)) {
 		fs.writeFileSync(allServerPath,
 			'///<reference path="packages-server.d.ts" />\n' +
-			(disableAppRefs ? '' : '///<reference path="app-server.d.ts" />\n')
+			(disableInApp ? '' : '///<reference path="app-server.d.ts" />\n')
 		);
 	}
 
 	if (!fs.existsSync(allClientPath)) {
 		fs.writeFileSync(allClientPath,
 			'///<reference path="packages-client.d.ts" />\n' +
-			(disableAppRefs ? '' : '///<reference path="app-client.d.ts" />\n')
+			(disableInApp ? '' : '///<reference path="app-client.d.ts" />\n')
 		);
 	}
 
 	if (!fs.existsSync(allPath)) {
 		fs.writeFileSync(allPath,
 			'///<reference path="dummy.ts" />\n' +
-			(disableAppRefs ? '' : '///<reference path="all-server.d.ts" />\n') +
-			(disableAppRefs ? '' : '///<reference path="all-client.d.ts" />\n')
+			'///<reference path="all-server.d.ts" />\n' +
+			'///<reference path="all-client.d.ts" />\n'
 		);
 	}
+
+	if (disableInApp) {
+		if (!fs.existsSync(meteorDummyPath)) {
+			fs.writeFileSync(meteorDummyPath, '');
+		}
+
+		if (!fs.existsSync(meteorAllServerPath)) {
+			fs.writeFileSync(meteorAllServerPath,
+				'///<reference path="packages-server.d.ts" />\n'
+			);
+		}
+
+		if (!fs.existsSync(meteorAllClientPath)) {
+			fs.writeFileSync(meteorAllClientPath,
+				'///<reference path="packages-client.d.ts" />\n'
+			);
+		}
+
+		if (!fs.existsSync(meteorAllPath)) {
+			fs.writeFileSync(meteorAllPath,
+				'///<reference path="dummy.ts" />\n' +
+				'///<reference path="all-server.d.ts" />\n' +
+				'///<reference path="all-client.d.ts" />\n'
+			);
+		}
+	}
+
 }
 
 function initAppRefs(curPath) {
 	if (!curPath) {
 		curPath = '.';
 	}
-	if (disableAppRefs) {
+	if (disableInApp) {
 		return;
 	}
 	var addDir;
@@ -409,6 +445,8 @@ function generatePackageRefs() {
 	var packages = typescriptPackages;
 	var allServerRefs = '';
 	var allClientRefs = '';
+	var meteorAllServerRefs = '';
+	var meteorAllClientRefs = '';
 	for (var i in packages) {
 		var packagePath = path.join(packages[i].path, '.#ts');
 		if (!fs.existsSync(packagePath)) {
@@ -472,12 +510,24 @@ function generatePackageRefs() {
 					allClientRefs += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), filesPath) + '" />\n';
 				}
 			}
+			if (disableInApp) {
+				if (side == 'server') {
+					meteorAllServerRefs += '///<reference path="' + path.relative(path.join(meteorPath, '.meteor', '.#ts'), filesPath) + '" />\n';
+				}
+				else if (side == 'client') {
+					meteorAllClientRefs += '///<reference path="' + path.relative(path.join(meteorPath, '.meteor', '.#ts'), filesPath) + '" />\n';
+				}
+			}
 
 		}
 	}
 
 	fs.writeFileSync(path.join('.meteor', '.#ts', 'packages-server.d.ts'), allServerRefs);
 	fs.writeFileSync(path.join('.meteor', '.#ts', 'packages-client.d.ts'), allClientRefs);
+	if (disableInApp) {
+		fs.writeFileSync(path.join(meteorPath, '.meteor', '.#ts', 'packages-server.d.ts'), meteorAllServerRefs);
+		fs.writeFileSync(path.join(meteorPath, '.meteor', '.#ts', 'packages-client.d.ts'), meteorAllClientRefs);
+	}
 
 }
 
@@ -530,7 +580,7 @@ class TypescriptCompiler extends CachingCompiler {
 
 		// cache check
 		//console.log(inputPath);
-		var cachePath = path.join(cacheDir, isApp ? path.relative('../', fullPath) : path.relative('./', fullPath));
+		var cachePath = path.join(cacheDir, isApp && !disableInApp ? path.relative('../', fullPath) : path.relative(meteorPath, fullPath));
 		var baseName = path.basename(fullPath, '.ts');
 		var changeTime = fs.statSync(fullPath).mtime;
 		var jsPath = path.join(path.dirname(cachePath), baseName + '.js');
@@ -588,18 +638,13 @@ class TypescriptCompiler extends CachingCompiler {
 				//'--pretty ' +
 				'--emitVerboseMetadata ' +
 				'--skipEmitVarForModule ' +
-				'--outDir ' + cacheDir;
-
-			// if (!disableAppRefs) {
-				compileCommand += ' ' + allPath;
-			// }
+				'--outDir ' + cacheDir + ' ' + (disableInApp ? meteorAllPath : allPath);
 			try {
 				var result = execSync(compileCommand);
 			}
 			catch (e) {
 				console.log(e);
 			}
-			//console.log(result)
 
 			if (result.stderr) {
 				var lines = (typeof result.stderr === 'string' ? result.stderr : result.stdout).split('\n');
@@ -615,7 +660,7 @@ class TypescriptCompiler extends CachingCompiler {
 				}
 			}
 			if (!error && !fs.existsSync(jsPath)) {
-				error = 'File was not created';
+				error = 'File was not created: ' + jsPath;
 			}
 			if (error) {
 				try {
