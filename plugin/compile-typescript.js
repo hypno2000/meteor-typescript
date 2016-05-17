@@ -15,6 +15,21 @@ var allPath = path.join('.meteor', '.#ts', 'all.ts');
 var dummyPath = path.join('.meteor', '.#ts', 'dummy.ts');
 var compilerPath = path.join(packagesPath, 'typescript', 'lib', 'typescript', 'tsc.js');
 
+if (isApp) {
+	var appPackages = fs.readFileSync(path.join(appPath, 'packages'))
+		.toString()
+		.split('\n')
+		.map(function(item) {
+			return item.split('#')[0].trim();
+		})
+		.filter(function(item) {
+			return !!item
+		})
+		.map(function(item) {
+			return item.split('@')[0];
+		});
+}
+
 var disableAppRefs = fs.existsSync('tsconfig.json');
 
 var typescriptPackages = getTypescriptPackages();
@@ -449,11 +464,13 @@ function generatePackageRefs() {
 			}
 			fs.writeFileSync(impliesPath, refs);
 
-			if (side == 'server') {
-				allServerRefs += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), filesPath) + '" />\n';
-			}
-			else if (side == 'client') {
-				allClientRefs += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), filesPath) + '" />\n';
+			if (!isApp || appPackages.indexOf(i) !== -1) {
+				if (side == 'server') {
+					allServerRefs += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), filesPath) + '" />\n';
+				}
+				else if (side == 'client') {
+					allClientRefs += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), filesPath) + '" />\n';
+				}
 			}
 
 		}
