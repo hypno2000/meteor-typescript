@@ -502,7 +502,7 @@ function generatePackageRefs() {
 			}
 			fs.writeFileSync(impliesPath, refs);
 
-			if (!isApp || appPackages.indexOf(i) !== -1) {
+			if (!disableInApp || appPackages.indexOf(i) !== -1) {
 				if (side == 'server') {
 					allServerRefs += '///<reference path="' + path.relative(path.join('.meteor', '.#ts'), filesPath) + '" />\n';
 				}
@@ -585,6 +585,7 @@ class TypescriptCompiler extends CachingCompiler {
 		var changeTime = fs.statSync(fullPath).mtime;
 		var jsPath = path.join(path.dirname(cachePath), baseName + '.js');
 		//	var mapPath = jsPath + '.map';
+		// console.log(jsPath);
 		var error;
 
 		// references
@@ -639,6 +640,8 @@ class TypescriptCompiler extends CachingCompiler {
 				'--emitVerboseMetadata ' +
 				'--skipEmitVarForModule ' +
 				'--outDir ' + cacheDir + ' ' + (disableInApp ? meteorAllPath : allPath);
+
+			// console.log(compileCommand);
 			try {
 				var result = execSync(compileCommand);
 			}
