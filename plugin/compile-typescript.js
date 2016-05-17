@@ -25,6 +25,7 @@ if (!fs.existsSync(path.join('.meteor', '.#ts'))) {
 
 initDirs();
 initAppRefs();
+generatePackageRefs();
 
 function initDirs() {
 
