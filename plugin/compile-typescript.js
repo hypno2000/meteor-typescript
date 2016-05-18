@@ -116,7 +116,7 @@ function initAppRefs(curPath) {
 	if (!curPath) {
 		curPath = '.';
 	}
-	if (disableInApp) {
+	if (disableInApp || curPath === 'node_modules' || curPath === 'typings') {
 		return;
 	}
 	var addDir;
