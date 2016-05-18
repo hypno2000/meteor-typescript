@@ -569,9 +569,21 @@ class TypescriptCompiler extends CachingCompiler {
 		if (packageName) {
 			fullPath = path.join(packagesPath, packageName, fullPath);
 		}
+
 		// console.log('Compiling...', (packageName || 'app') + '/' + pathInPackage);
+
+		if (pathInPackage.indexOf('node_modules/') !== -1) {
+			console.log('Ignoring', (packageName || 'app') + '/' + pathInPackage, 'becouse its in node_modules');
+			return {};
+		}
+
+		if (pathInPackage.indexOf('typings/') !== -1) {
+			console.log('Ignoring', (packageName || 'app') + '/' + pathInPackage, 'becouse its in typings');
+			return {};
+		}
+
 		if (pathInPackage.substr(-5) === '.d.ts') {
-			console.log('Ignoring', (packageName || 'app') + '/' + pathInPackage, 'as its a definition');
+			console.log('Ignoring', (packageName || 'app') + '/' + pathInPackage, 'becouse its a definition');
 			return {};
 		}
 
@@ -581,7 +593,7 @@ class TypescriptCompiler extends CachingCompiler {
 			typescriptPackages[packageName].client.files.indexOf(pathInPackage) === -1 &&
 			typescriptPackages[packageName].server.files.indexOf(pathInPackage) === -1
 		) {
-			console.log('Ignoring', (packageName || 'app') + '/' + pathInPackage, 'as its not added to package.js');
+			console.log('Ignoring', (packageName || 'app') + '/' + pathInPackage, 'becouse its not added to package.js');
 			return {};
 		}
 
@@ -751,15 +763,25 @@ class TypescriptCompiler extends CachingCompiler {
 		if (packageName) {
 			fullPath = path.join(packagesPath, packageName.replace('local-test:', ''), fullPath);
 		}
-		if (pathInPackage.substr(-5) === '.d.ts') {
-			return null;
+
+		if (pathInPackage.indexOf('node_modules/') !== -1) {
+			return '';
 		}
+
+		if (pathInPackage.indexOf('typings/') !== -1) {
+			return '';
+		}
+
+		if (pathInPackage.substr(-5) === '.d.ts') {
+			return '';
+		}
+
 		if (
 			packageName &&
 			typescriptPackages[packageName].client.files.indexOf(pathInPackage) === -1 &&
 			typescriptPackages[packageName].server.files.indexOf(pathInPackage) === -1
 		) {
-			return null;
+			return '';
 		}
 		return fullPath + fs.statSync(fullPath).mtime;
 	}
