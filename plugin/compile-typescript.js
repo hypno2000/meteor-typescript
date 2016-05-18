@@ -435,7 +435,7 @@ function getTypescriptPackages() {
 var lastGenerateTime;
 function generatePackageRefs() {
 
-	// generate max once per second
+	// generate max once per 10 second
 	var currentTime = new Date().getTime() / 1000;
 	if (lastGenerateTime && currentTime - lastGenerateTime < 1) {
 		return;
@@ -539,8 +539,8 @@ class TypescriptCompiler extends CachingCompiler {
 
 	constructor() {
 		super({
-			compilerName: 'coffeescript',
-			defaultCacheSize: 1024 * 1024 * 100,
+			compilerName: 'typescript',
+			defaultCacheSize: 1024 * 1024 * 1024,
 		});
 	}
 
@@ -569,23 +569,27 @@ class TypescriptCompiler extends CachingCompiler {
 		if (packageName) {
 			fullPath = path.join(packagesPath, packageName, fullPath);
 		}
+		// console.log('Compiling...', (packageName || 'app') + '/' + pathInPackage);
 		if (pathInPackage.substr(-5) === '.d.ts') {
-			return null;
+			console.log('Ignoring', (packageName || 'app') + '/' + pathInPackage, 'as its a definition');
+			return {};
 		}
 
-		generatePackageRefs();
-
-		//	console.log("Src: " + fullPath);
-		var isRef = fullPath.substring(fullPath.length - 5) === '.d.ts';
+		// generatePackageRefs();
+		if (
+			packageName &&
+			typescriptPackages[packageName].client.files.indexOf(pathInPackage) === -1 &&
+			typescriptPackages[packageName].server.files.indexOf(pathInPackage) === -1
+		) {
+			console.log('Ignoring', (packageName || 'app') + '/' + pathInPackage, 'as its not added to package.js');
+			return {};
+		}
 
 		// cache check
-		//console.log(inputPath);
 		var cachePath = path.join(cacheDir, isApp && !disableInApp ? path.relative('../', fullPath) : path.relative(meteorPath, fullPath));
 		var baseName = path.basename(fullPath, '.ts');
 		var changeTime = fs.statSync(fullPath).mtime;
 		var jsPath = path.join(path.dirname(cachePath), baseName + '.js');
-		//	var mapPath = jsPath + '.map';
-		// console.log(jsPath);
 		var error;
 
 		// references
@@ -605,16 +609,21 @@ class TypescriptCompiler extends CachingCompiler {
 			}
 		}
 
-		// dont compile d.ts files
-		if (isRef) {
-			return;
-		}
+		var doesntExists = !fs.existsSync(jsPath);
+		var existingTime = !doesntExists && fs.statSync(jsPath).mtime;
+		var isTooOld = existingTime && changeTime.getTime() > existingTime.getTime();
+		if (doesntExists || isTooOld) {
 
-		if (!fs.existsSync(cacheDir)) {
-			mkdirp.sync(cacheDir);
-		}
-
-		if (!fs.existsSync(jsPath) || changeTime.getTime() > fs.statSync(jsPath).mtime.getTime()) {
+			if (doesntExists) {
+				console.log('Compiling because doesnt exist:', fullPath);
+				// console.log(
+				// 	typescriptPackages[packageName].client.files,
+				// 	typescriptPackages[packageName].server.files
+				// );
+			}
+			else {
+				console.log('Compiling because too old:', fullPath);
+			}
 
 			var exec = Npm.require('child_process').exec;
 			var Future = Npm.require('fibers/future');
@@ -745,6 +754,13 @@ class TypescriptCompiler extends CachingCompiler {
 		if (pathInPackage.substr(-5) === '.d.ts') {
 			return null;
 		}
+		if (
+			packageName &&
+			typescriptPackages[packageName].client.files.indexOf(pathInPackage) === -1 &&
+			typescriptPackages[packageName].server.files.indexOf(pathInPackage) === -1
+		) {
+			return null;
+		}
 		return fullPath + fs.statSync(fullPath).mtime;
 	}
 
@@ -757,6 +773,9 @@ class TypescriptCompiler extends CachingCompiler {
 	// the cache).  It should call methods like `inputFile.addJavaScript`
 	// and `inputFile.error`.
 	addCompileResult(inputFile, compileResult) {
+		if (!compileResult.data) {
+			return;
+		}
 		inputFile.addJavaScript({
 			path: compileResult.path,
 			sourcePath: inputFile.getPathInPackage(),
@@ -770,6 +789,9 @@ class TypescriptCompiler extends CachingCompiler {
 	// CompilerResult (used by the in-memory cache to limit the total amount of
 	// data cached).
 	compileResultSize(compileResult) {
+		if (!compileResult.data) {
+			return 0;
+		}
 		return compileResult.data.length + compileResult.sourceMap.length
 	}
 
