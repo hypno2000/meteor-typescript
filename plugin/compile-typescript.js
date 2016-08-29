@@ -697,7 +697,7 @@ class TypescriptCompiler extends CachingCompiler {
 				// ../meteor/packages/marketing/TransactionServer.ts(1078,10)
 				error = error
 					.replace(/(\x1b\[30m)/g, '\n$1')
-					.replace(/([a-zA-Z0-9\.\/_-]+)\(([0-9]+),([0-9]+)\)/g, '\n\x1b[44m' + process.cwd().replace(new RegExp('^/Users/' + process.env.USER, 'g'), '~') + '/$1:$2 $3\x1b[0m');
+					// .replace(/([a-zA-Z0-9\.\/_-]+)\(([0-9]+),([0-9]+)\)/g, '\n\x1b[42;1m' + process.cwd().replace(new RegExp('^/Users/' + process.env.USER, 'g'), '~') + '/$1:$2 $3\x1b[0m');
 				inputFile.error({
 					message: error
 				});
@@ -761,7 +761,8 @@ class TypescriptCompiler extends CachingCompiler {
 		var packageName = inputFile.getPackageName();
 		var fullPath = pathInPackage;
 		if (packageName) {
-			fullPath = path.join(packagesPath, packageName.replace('local-test:', ''), fullPath);
+			packageName = packageName.replace('local-test:', '');
+			fullPath = path.join(packagesPath, packageName, fullPath);
 		}
 
 		if (pathInPackage.indexOf('node_modules/') !== -1) {
