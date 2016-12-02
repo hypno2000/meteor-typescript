@@ -6,7 +6,7 @@ var disableInApp = fs.existsSync('tsconfig.json');
 
 var appRefs = [];
 var appDirs = [];
-var meteorPath = fs.existsSync(path.join('..', 'meteor')) ? path.join('..', 'meteor') : path.join('..', '..', 'meteor');
+var meteorPath = process.env.METEOR_PATH || (fs.existsSync(path.join('..', 'meteor')) ? path.join('..', 'meteor') : path.join('..', '..', 'meteor'));
 var appPath = fs.existsSync('.meteor') ? '.meteor' : '../.meteor';
 var isApp = fs.existsSync(path.join(appPath, 'release'));
 var packagesPath = path.join(meteorPath, 'packages');
